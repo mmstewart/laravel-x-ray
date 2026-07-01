@@ -2,7 +2,7 @@
 
 // config for Mmstewart/LaravelXRay
 return [
-    
+
     'github_token' => env('GITHUB_TOKEN'),
 
     // Valid Laravel versions for comparison

@@ -3,8 +3,8 @@
 namespace Mmstewart\LaravelXRay\Commands;
 
 use Illuminate\Console\Command;
-use Mmstewart\LaravelXRay\SkeletonDifference;
 use Mmstewart\LaravelXRay\Categorizer;
+use Mmstewart\LaravelXRay\SkeletonDifference;
 
 class LaravelXRayCommand extends Command
 {
@@ -17,7 +17,7 @@ class LaravelXRayCommand extends Command
         $from = $this->argument('from');
         $to = $this->argument('to');
 
-        if (!$this->isValidUpgrade($from, $to)) {
+        if (! $this->isValidUpgrade($from, $to)) {
             return self::FAILURE;
         }
 
@@ -25,7 +25,7 @@ class LaravelXRayCommand extends Command
 
         $files = (new SkeletonDifference(config('x-ray.github_token')))->fetch($from, $to);
 
-        $categorized = (new Categorizer())->categorize($files);
+        $categorized = (new Categorizer)->categorize($files);
 
         $this->line('Config changes:');
         foreach ($categorized['config'] as $file) {
@@ -58,7 +58,6 @@ class LaravelXRayCommand extends Command
 
         // return self::SUCCESS;
 
-
         // $diff = (new LaravelXRayComparisonUpgradeDifference(
         //     config('x-ray.github_token')
         // ))->fetch($from, $to);
@@ -76,14 +75,14 @@ class LaravelXRayCommand extends Command
     {
         $validVersions = config('x-ray.valid_laravel_versions');
 
-        if (!in_array($from, $validVersions)) {
-            $this->error("Invalid version: {$from}. Valid versions are: " . implode(', ', $validVersions));
+        if (! in_array($from, $validVersions)) {
+            $this->error("Invalid version: {$from}. Valid versions are: ".implode(', ', $validVersions));
 
             return false;
         }
 
-        if (!in_array($to, $validVersions)) {
-            $this->error("Invalid version: {$to}. Valid versions are: " . implode(', ', $validVersions));
+        if (! in_array($to, $validVersions)) {
+            $this->error("Invalid version: {$to}. Valid versions are: ".implode(', ', $validVersions));
 
             return false;
         }

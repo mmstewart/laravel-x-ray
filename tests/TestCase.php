@@ -3,8 +3,8 @@
 namespace Mmstewart\LaravelXRay\Tests;
 
 use Illuminate\Database\Eloquent\Factories\Factory;
-use Orchestra\Testbench\TestCase as Orchestra;
 use Mmstewart\LaravelXRay\LaravelXRayServiceProvider;
+use Orchestra\Testbench\TestCase as Orchestra;
 
 class TestCase extends Orchestra
 {

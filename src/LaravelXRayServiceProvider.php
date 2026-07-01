@@ -2,9 +2,9 @@
 
 namespace Mmstewart\LaravelXRay;
 
+use Mmstewart\LaravelXRay\Commands\LaravelXRayCommand;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
-use Mmstewart\LaravelXRay\Commands\LaravelXRayCommand;
 
 class LaravelXRayServiceProvider extends PackageServiceProvider
 {

@@ -25,7 +25,7 @@ class Categorizer
 
     private function detectBucket(string $filename)
     {
-        return match(true) {
+        return match (true) {
             str_starts_with($filename, 'config/') => 'config',
             $filename === 'bootstrap/app.php' => 'bootstrap',
             $filename === 'composer.json' => 'composer',
