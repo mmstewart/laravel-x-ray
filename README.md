@@ -1,19 +1,16 @@
-# This is my package laravel-x-ray
+# Laravel X-Ray
 
 [![Latest Version on Packagist](https://img.shields.io/packagist/v/mmstewart/laravel-x-ray.svg?style=flat-square)](https://packagist.org/packages/mmstewart/laravel-x-ray)
 [![GitHub Tests Action Status](https://github.com/spatie/package-laravel-x-ray-laravel/actions/workflows/run-tests.yml/badge.svg)](https://github.com/mmstewart/laravel-x-ray/actions?query=workflow%3Arun-tests+branch%3Amain)
 [![GitHub Code Style Action Status](https://github.com/spatie/package-laravel-x-ray-laravel/actions/workflows/fix-php-code-style-issues.yml/badge.svg)](https://github.com/mmstewart/laravel-x-ray/actions?query=workflow%3A"Fix+PHP+code+style+issues"+branch%3Amain)
 [![Total Downloads](https://img.shields.io/packagist/dt/mmstewart/laravel-x-ray.svg?style=flat-square)](https://packagist.org/packages/mmstewart/laravel-x-ray)
 
-This is where your description should go. Limit it to a paragraph or two. Consider adding a small example.
+Laravel X-Ray scans your codebase before a major version upgrade and produces
+a prioritized report of incompatible packages, deprecated method usage, and
+config drift. Before you change a single line of code.
 
-## Support us
-
-[<img src="https://github-ads.s3.eu-central-1.amazonaws.com/laravel-x-ray.jpg?t=1" width="419px" />](https://spatie.be/github-ad-click/laravel-x-ray)
-
-We invest a lot of resources into creating [best in class open source packages](https://spatie.be/open-source). You can support us by [buying one of our paid products](https://spatie.be/open-source/support-us).
-
-We highly appreciate you sending us a postcard from your hometown, mentioning which of our package(s) you are using. You'll find our address on [our contact page](https://spatie.be/about-us). We publish all received postcards on [our virtual postcard wall](https://spatie.be/open-source/postcards).
+No code leaves your machine, nothing gets changed. Run it locally or in CI
+to know exactly what needs fixing before you upgrade.
 
 ## Installation
 
@@ -66,10 +63,6 @@ composer test
 
 Please see [CHANGELOG](CHANGELOG.md) for more information on what has changed recently.
 
-## Contributing
-
-Please see [CONTRIBUTING](CONTRIBUTING.md) for details.
-
 ## Security Vulnerabilities
 
 Please review [our security policy](../../security/policy) on how to report security vulnerabilities.
@@ -77,7 +70,6 @@ Please review [our security policy](../../security/policy) on how to report secu
 ## Credits
 
 - [mmstewart](https://github.com/mmstewart)
-- [All Contributors](../../contributors)
 
 ## License
 
