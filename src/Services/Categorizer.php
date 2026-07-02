@@ -1,6 +1,6 @@
 <?php
 
-namespace Mmstewart\LaravelXRay;
+namespace Mmstewart\LaravelXRay\Services;
 
 class Categorizer
 {

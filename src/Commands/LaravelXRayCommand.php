@@ -3,8 +3,10 @@
 namespace Mmstewart\LaravelXRay\Commands;
 
 use Illuminate\Console\Command;
-use Mmstewart\LaravelXRay\Categorizer;
-use Mmstewart\LaravelXRay\SkeletonDifference;
+use Mmstewart\LaravelXRay\Analyzers\ComposerAnalyzer;
+use Mmstewart\LaravelXRay\Analyzers\EnvAnalyzer;
+use Mmstewart\LaravelXRay\Services\Categorizer;
+use Mmstewart\LaravelXRay\Services\LaravelVersionDifference;
 
 class LaravelXRayCommand extends Command
 {
@@ -23,50 +25,37 @@ class LaravelXRayCommand extends Command
 
         $this->info("Running X-Ray scan: Laravel {$from} → {$to}");
 
-        $files = (new SkeletonDifference(config('x-ray.github_token')))->fetch($from, $to);
+        $files = (new LaravelVersionDifference)->fetch($from, $to);
 
-        $categorized = (new Categorizer)->categorize($files);
-
-        $this->line('Config changes:');
-        foreach ($categorized['config'] as $file) {
-            $this->line("  - {$file['filename']}");
-        }
-
-        $this->line('Composer changes:');
-        foreach ($categorized['composer'] as $file) {
-            $this->line("  - {$file['filename']}");
-        }
-
-        $this->line('Environment changes:');
-        foreach ($categorized['env'] as $file) {
-            $this->line("  - {$file['filename']}");
-        }
-
-        $this->line('Bootstrap changes:');
-        foreach ($categorized['bootstrap'] as $file) {
-            $this->line("  - {$file['filename']}");
-        }
-
-        // $results = array_merge(
-        //     (new EnvAnalyzer($categorized['env']))->analyze(),
-        //     (new ComposerAnalyzer($categorized['composer'], $to))->analyze(),
-        //     (new ConfigAnalyzer($categorized['config']))->analyze(),
-        //     (new BootstrapAnalyzer($categorized['bootstrap']))->analyze(),
-        // );
-
-        // (new XRayReport($this))->display($results);
-
-        // return self::SUCCESS;
-
-        // $diff = (new LaravelXRayComparisonUpgradeDifference(
-        //     config('x-ray.github_token')
-        // ))->fetch($from, $to);
-
-        // foreach ($diff as $file) {
+        // foreach ($files as $file) {
         //     $this->line($file['filename']);
         // }
 
-        $this->info('Done!');
+        $categorized = (new Categorizer)->categorize($files);
+
+        // foreach ($categorized as $bucket => $files) {
+        //     $this->line("=== {$bucket} ===");
+
+        //     foreach ($files as $file) {
+        //         $this->line($file['filename']);
+        //     }
+        // }
+
+        $analyzers = [
+            'env' => fn() => (new EnvAnalyzer($categorized['env']))->analyze(),
+            'composer' => fn() => (new ComposerAnalyzer($categorized['composer'], $to))->analyze(),
+            // 'config' => fn() => (new ConfigAnalyzer($categorized['config']))->analyze(),
+            // 'bootstrap' => fn() => (new BootstrapAnalyzer($categorized['bootstrap']))->analyze(),
+        ];
+
+        $results = collect($analyzers)
+            ->filter(fn($analyzer, $key) => config("x-ray.analyzers.{$key}"))
+            ->flatMap(fn($analyzer) => $analyzer())
+            ->all();
+
+        $this->line(print_r($results, true));
+
+        // (new XRayReport($this))->display($results);
 
         return self::SUCCESS;
     }
