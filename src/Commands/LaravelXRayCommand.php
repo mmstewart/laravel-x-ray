@@ -42,15 +42,15 @@ class LaravelXRayCommand extends Command
         // }
 
         $analyzers = [
-            'env' => fn() => (new EnvAnalyzer($categorized['env']))->analyze(),
-            'composer' => fn() => (new ComposerAnalyzer($categorized['composer'], $to))->analyze(),
+            'env' => fn () => (new EnvAnalyzer($categorized['env']))->analyze(),
+            'composer' => fn () => (new ComposerAnalyzer($categorized['composer'], $to))->analyze(),
             // 'config' => fn() => (new ConfigAnalyzer($categorized['config']))->analyze(),
             // 'bootstrap' => fn() => (new BootstrapAnalyzer($categorized['bootstrap']))->analyze(),
         ];
 
         $results = collect($analyzers)
-            ->filter(fn($analyzer, $key) => config("x-ray.analyzers.{$key}"))
-            ->flatMap(fn($analyzer) => $analyzer())
+            ->filter(fn ($analyzer, $key) => config("x-ray.analyzers.{$key}"))
+            ->flatMap(fn ($analyzer) => $analyzer())
             ->all();
 
         $this->line(print_r($results, true));

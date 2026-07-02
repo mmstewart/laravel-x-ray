@@ -23,7 +23,7 @@ class EnvAnalyzer
         $missingKeys = array_diff($addedKeys, $userKeys);
 
         return collect($missingKeys)
-            ->map(fn($key) => [
+            ->map(fn ($key) => [
                 'type' => 'env',
                 'severity' => 'warning',
                 'message' => "Missing env key: {$key}",
@@ -40,7 +40,7 @@ class EnvAnalyzer
 
         foreach (explode("\n", $patch) as $line) {
             // Lines starting with + are additions, skip +++ header lines
-            if (str_starts_with($line, '+') && !str_starts_with($line, '+++')) {
+            if (str_starts_with($line, '+') && ! str_starts_with($line, '+++')) {
                 $line = ltrim($line, '+');
                 $line = trim($line);
 
@@ -64,7 +64,7 @@ class EnvAnalyzer
     {
         $path = base_path('.env.example');
 
-        if (!file_exists($path)) {
+        if (! file_exists($path)) {
             return [];
         }
 

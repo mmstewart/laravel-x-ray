@@ -26,7 +26,7 @@ class ComposerAnalyzer
     {
         $requiredPhp = $this->parseRequiredPhpFromPatch();
 
-        if (!$requiredPhp || $this->satisfiesConstraint(PHP_VERSION, $requiredPhp)) {
+        if (! $requiredPhp || $this->satisfiesConstraint(PHP_VERSION, $requiredPhp)) {
             return [];
         }
 
@@ -34,9 +34,9 @@ class ComposerAnalyzer
             [
                 'type' => 'composer',
                 'severity' => 'error',
-                'message' => "PHP {$requiredPhp} required but you are running " . PHP_VERSION,
+                'message' => "PHP {$requiredPhp} required but you are running ".PHP_VERSION,
                 'key' => 'php',
-            ]
+            ],
         ];
     }
 
@@ -46,7 +46,7 @@ class ComposerAnalyzer
 
         foreach (explode("\n", $patch) as $line) {
             // Look for added lines that mention php version requirement
-            if (str_starts_with($line, '+') && !str_starts_with($line, '+++')) {
+            if (str_starts_with($line, '+') && ! str_starts_with($line, '+++')) {
                 if (str_contains($line, '"php"')) {
                     // Extract version constraint e.g. "^8.2"
                     preg_match('/"php":\s*"([^"]+)"/', $line, $matches);
@@ -75,8 +75,8 @@ class ComposerAnalyzer
         $skip = ['php', 'laravel/framework', 'mmstewart/laravel-x-ray', 'composer/semver'];
 
         return collect($this->getUserPackages())
-            ->reject(fn($version, $package) => in_array($package, $skip))
-            ->map(fn($version, $package) => $this->buildCompatibilityIssue($package))
+            ->reject(fn ($version, $package) => in_array($package, $skip))
+            ->map(fn ($version, $package) => $this->buildCompatibilityIssue($package))
             ->filter()
             ->values()
             ->toArray();
@@ -86,7 +86,7 @@ class ComposerAnalyzer
     {
         $compatible = $this->isPackageCompatible($package, $this->targetVersion);
 
-        return match($compatible) {
+        return match ($compatible) {
             false => [
                 'type' => 'composer',
                 'severity' => 'error',
@@ -110,9 +110,9 @@ class ComposerAnalyzer
         $userDevDeps = $this->getUserDevPackages();
 
         return collect($skeletonDevDeps)
-            ->filter(fn($skeletonVersion, $package) => isset($userDevDeps[$package]))
-            ->reject(fn($skeletonVersion, $package) => $userDevDeps[$package] === $skeletonVersion)
-            ->map(fn($skeletonVersion, $package) => [
+            ->filter(fn ($skeletonVersion, $package) => isset($userDevDeps[$package]))
+            ->reject(fn ($skeletonVersion, $package) => $userDevDeps[$package] === $skeletonVersion)
+            ->map(fn ($skeletonVersion, $package) => [
                 'type' => 'composer',
                 'severity' => 'warning',
                 'message' => "{$package} version mismatch — you have {$userDevDeps[$package]}, Laravel {$this->targetVersion} recommends {$skeletonVersion}",
@@ -124,7 +124,7 @@ class ComposerAnalyzer
     {
         $path = base_path('composer.json');
 
-        if (!file_exists($path)) {
+        if (! file_exists($path)) {
             return [];
         }
 
@@ -136,7 +136,7 @@ class ComposerAnalyzer
     private function getSkeletonComposer()
     {
         $response = Http::withHeaders([
-            'Authorization' => 'Bearer ' . config('x-ray.github_token'),
+            'Authorization' => 'Bearer '.config('x-ray.github_token'),
             'Accept' => 'application/vnd.github+json',
         ])->get("https://api.github.com/repos/laravel/laravel/contents/composer.json?ref={$this->targetVersion}");
 
@@ -150,7 +150,7 @@ class ComposerAnalyzer
     {
         $path = base_path('composer.json');
 
-        if (!file_exists($path)) {
+        if (! file_exists($path)) {
             return [];
         }
 
@@ -166,7 +166,7 @@ class ComposerAnalyzer
             'Accept' => 'application/json',
         ])->get("https://packagist.org/packages/{$package}.json");
 
-        if (!$response->successful()) {
+        if (! $response->successful()) {
             return null;
         }
 
