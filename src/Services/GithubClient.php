@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Http;
 
 class GithubClient
 {
-    public function compare(string $repository, string $from, string $to): Response 
+    public function compare(string $repository, string $from, string $to): Response
     {
         return Http::withHeaders($this->headers())
             ->get("https://api.github.com/repos/{$repository}/compare/{$from}...{$to}");

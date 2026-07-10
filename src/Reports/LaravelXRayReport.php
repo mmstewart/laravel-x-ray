@@ -17,8 +17,7 @@ class LaravelXRayReport
         $minimum = config('x-ray.minimum_severity', 'info');
 
         $results = collect($results)
-            ->filter(fn ($issue) =>
-                isset($severityLevels[$issue['severity']])
+            ->filter(fn ($issue) => isset($severityLevels[$issue['severity']])
                 && $severityLevels[$issue['severity']] >= $severityLevels[$minimum]
             )
             ->toArray();
@@ -47,7 +46,7 @@ class LaravelXRayReport
         $this->command->line('');
     }
 
-    private function renderSection(string $title, string $icon, Collection $issues): void 
+    private function renderSection(string $title, string $icon, Collection $issues): void
     {
         if ($issues->isEmpty()) {
             return;

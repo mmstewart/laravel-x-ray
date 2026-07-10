@@ -96,7 +96,7 @@ class ComposerAnalyzer
 
     private function buildCompatibilityIssue(string $package, string $installedConstraint): ?array
     {
-        $compatibleVersion  = $this->findCompatibleVersion($package, $this->targetVersion);
+        $compatibleVersion = $this->findCompatibleVersion($package, $this->targetVersion);
 
         if ($compatibleVersion === null) {
             return [
@@ -125,13 +125,12 @@ class ComposerAnalyzer
 
         $userDevDeps = $this->getUserDevPackages();
 
-         return collect($skeletonDevDeps)
+        return collect($skeletonDevDeps)
             ->filter(fn ($constraint, $package) => isset($userDevDeps[$package]))
-            ->filter(fn ($constraint, $package) =>
-                ! $this->satisfiesDevDependency(
-                    $userDevDeps[$package],
-                    $constraint
-                )
+            ->filter(fn ($constraint, $package) => ! $this->satisfiesDevDependency(
+                $userDevDeps[$package],
+                $constraint
+            )
             )
             ->map(fn ($constraint, $package) => [
                 'type' => 'composer',
@@ -143,10 +142,10 @@ class ComposerAnalyzer
             ->toArray();
     }
 
-    private function satisfiesDevDependency(string $installed, string $required): bool 
+    private function satisfiesDevDependency(string $installed, string $required): bool
     {
         try {
-            $parser = new VersionParser();
+            $parser = new VersionParser;
 
             $installedConstraint = $parser->parseConstraints($installed);
             $requiredConstraint = $parser->parseConstraints($required);
@@ -252,8 +251,7 @@ class ComposerAnalyzer
         foreach ($versions as $version => $details) {
             $laravelConstraint = collect($details['require'] ?? [])
                 ->filter(
-                    fn ($constraint, $dependency) =>
-                        $dependency === 'laravel/framework'
+                    fn ($constraint, $dependency) => $dependency === 'laravel/framework'
                         || str_starts_with($dependency, 'illuminate/')
                 )
                 ->first();
