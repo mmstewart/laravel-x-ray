@@ -6,82 +6,144 @@ use Illuminate\Console\Command;
 use Mmstewart\LaravelXRay\Analyzers\ComposerAnalyzer;
 use Mmstewart\LaravelXRay\Analyzers\EnvAnalyzer;
 use Mmstewart\LaravelXRay\Services\Categorizer;
-use Mmstewart\LaravelXRay\Services\LaravelVersionDifference;
+use Mmstewart\LaravelXRay\Services\LaravelContext;
+use Mmstewart\LaravelXRay\Services\LaravelSkeletonDifference;
+use Mmstewart\LaravelXRay\Services\LaravelVersionResolver;
+use Mmstewart\LaravelXRay\Reports\LaravelXRayReport;
 
 class LaravelXRayCommand extends Command
 {
-    public $signature = 'laravel-x-ray {from=10.x} {to=11.x}';
+    public $signature = 'laravel-x-ray {from?} {to?}';
 
-    public $description = 'Scan your Laravel app for upgrade compatibility';
+    public $description = 'Scan your Laravel app for upgrade compatibility.';
 
-    public function handle()
+    public function handle(): int
     {
-        $from = $this->argument('from');
-        $to = $this->argument('to');
+        $versionResolver = new LaravelVersionResolver();
 
-        if (! $this->isValidUpgrade($from, $to)) {
+        $context = new LaravelContext(
+            installedVersion: $versionResolver->version(),
+            currentBranch: $versionResolver->currentBranch(),
+            targetBranch: $versionResolver->targetBranch(),
+        );
+
+        [$from, $to] = $this->resolveBranches($context);
+
+        if (!$this->isValidUpgrade($from, $to)) {
             return self::FAILURE;
         }
 
-        $this->info("Running X-Ray scan: Laravel {$from} → {$to}");
+        $this->info("Laravel {$context->installedVersion}");
+        $this->info("Comparing {$from} → {$to}");
 
-        $files = (new LaravelVersionDifference)->fetch($from, $to);
+        // TODO: uncomment
+        // if ($from === $to) {
+        //     $this->warn('No newer Laravel skeleton branch is available.');
 
-        // foreach ($files as $file) {
-        //     $this->line($file['filename']);
+        //     return self::SUCCESS;
         // }
 
-        $categorized = (new Categorizer)->categorize($files);
+        $skeletonFiles = $this->fetchSkeletonDiff($from, $to);
 
-        // foreach ($categorized as $bucket => $files) {
-        //     $this->line("=== {$bucket} ===");
+        $categorizedFiles = (new Categorizer())->categorize($skeletonFiles);
 
-        //     foreach ($files as $file) {
-        //         $this->line($file['filename']);
-        //     }
-        // }
+        $analyzers = $this->buildAnalyzers($to, $categorizedFiles);
 
-        $analyzers = [
-            'env' => fn () => (new EnvAnalyzer($categorized['env']))->analyze(),
-            'composer' => fn () => (new ComposerAnalyzer($categorized['composer'], $to))->analyze(),
-            // 'config' => fn() => (new ConfigAnalyzer($categorized['config']))->analyze(),
-            // 'bootstrap' => fn() => (new BootstrapAnalyzer($categorized['bootstrap']))->analyze(),
-        ];
+        $results = $this->runAnalyzers($analyzers);
 
-        $results = collect($analyzers)
-            ->filter(fn ($analyzer, $key) => config("x-ray.analyzers.{$key}"))
-            ->flatMap(fn ($analyzer) => $analyzer())
-            ->all();
-
-        $this->line(print_r($results, true));
-
-        // (new XRayReport($this))->display($results);
+        $this->renderReport($results);
 
         return self::SUCCESS;
     }
 
-    private function isValidUpgrade(string $from, string $to)
+    /**
+     * Determine whether the requested upgrade path is valid.
+     *
+     * This performs a basic major-version comparison to ensure the target
+     * Laravel major version is greater than the source. It currently assumes
+     * branch names start with the major version (e.g. "11.x", "12.x").
+     *
+     * @param string $from Source branch or version
+     * @param string $to   Target branch or version
+     * @return bool True when upgrade is valid, false otherwise
+     */
+    private function isValidUpgrade(string $from, string $to): bool
     {
-        $validVersions = config('x-ray.valid_laravel_versions');
+        $fromVersion = LaravelVersionResolver::normalizeVersion($from);
+        $toVersion = LaravelVersionResolver::normalizeVersion($to);
 
-        if (! in_array($from, $validVersions)) {
-            $this->error("Invalid version: {$from}. Valid versions are: ".implode(', ', $validVersions));
-
-            return false;
-        }
-
-        if (! in_array($to, $validVersions)) {
-            $this->error("Invalid version: {$to}. Valid versions are: ".implode(', ', $validVersions));
-
-            return false;
-        }
-
-        if ($from >= $to) {
-            $this->error("You must upgrade to a higher version. {$from} is not lower than {$to}");
+        if (! version_compare($fromVersion, $toVersion, '<')) {
+            $this->error("Invalid upgrade path: {$from} → {$to}");
 
             return false;
         }
 
         return true;
+    }
+
+    /**
+     * Resolve the source and target branches from context and arguments.
+     *
+     * @return array{0:string,1:string}
+     */
+    private function resolveBranches(LaravelContext $context): array
+    {
+        $from = $this->argument('from') ?? $context->currentBranch;
+        $to = $this->argument('to') ?? $context->targetBranch;
+
+        return [$from, $to];
+    }
+
+    /**
+     * Fetch skeleton diff between branches.
+     *
+     * @return array<int, array>
+     */
+    private function fetchSkeletonDiff(string $from, string $to): array
+    {
+        return (new LaravelSkeletonDifference())->fetch($from, $to);
+    }
+
+    /**
+     * Build the analyzers registry for execution.
+     *
+     * @param string $to
+     * @param array<string,mixed> $categorized
+     * @return array<string,callable>
+     */
+    private function buildAnalyzers(string $to, array $categorized): array
+    {
+        return [
+            'env' => fn () => (new EnvAnalyzer($categorized['env']))->analyze(),
+            'composer' => fn () => (new ComposerAnalyzer($categorized['composer'], $to))->analyze(),
+        ];
+    }
+
+    /**
+     * Run the configured analyzers honoring config toggles.
+     *
+     * @param array<string,callable> $analyzers
+     * @return array<int,mixed>
+     */
+    private function runAnalyzers(array $analyzers): array
+    {
+        return collect($analyzers)
+            ->filter(fn ($analyzer, $key) => config("x-ray.analyzers.{$key}"))
+            ->flatMap(fn ($analyzer) => $analyzer())
+            ->all();
+    }
+
+    /**
+     * Render the analysis results to the console (or other report targets).
+     *
+     * The `LaravelXRayReport` is responsible for formatting and output; this
+     * method delegates to it so the command remains focused on orchestration.
+     *
+     * @param array<int,mixed> $results Analyzer results to render
+     * @return void
+     */
+    private function renderReport(array $results): void
+    {
+        (new LaravelXRayReport($this))->display($results);
     }
 }

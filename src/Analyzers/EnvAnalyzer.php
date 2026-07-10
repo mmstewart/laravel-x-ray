@@ -8,7 +8,7 @@ class EnvAnalyzer
         private array $skeletonFiles
     ) {}
 
-    public function analyze()
+    public function analyze(): array
     {
         if (empty($this->skeletonFiles)) {
             return [];
@@ -34,7 +34,7 @@ class EnvAnalyzer
     }
 
     // Pull keys from lines added in the patch (lines starting with +)
-    private function parseAddedKeys(string $patch)
+    private function parseAddedKeys(string $patch): array
     {
         $keys = [];
 
@@ -60,7 +60,7 @@ class EnvAnalyzer
     }
 
     // Read the user's actual .env.example and extract keys
-    private function getUserEnvKeys()
+    private function getUserEnvKeys(): array
     {
         $path = base_path('.env.example');
 

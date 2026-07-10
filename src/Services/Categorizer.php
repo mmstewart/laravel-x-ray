@@ -4,7 +4,7 @@ namespace Mmstewart\LaravelXRay\Services;
 
 class Categorizer
 {
-    public function categorize(array $files)
+    public function categorize(array $files): array
     {
         $result = [
             'config' => [],
@@ -23,7 +23,7 @@ class Categorizer
         return $result;
     }
 
-    private function detectBucket(string $filename)
+    private function detectBucket(string $filename): string
     {
         return match (true) {
             str_starts_with($filename, 'config/') => 'config',

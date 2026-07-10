@@ -4,6 +4,7 @@ namespace Mmstewart\LaravelXRay\Analyzers;
 
 use Composer\Semver\Semver;
 use Illuminate\Support\Facades\Http;
+use Mmstewart\LaravelXRay\Services\LaravelVersionResolver;
 
 class ComposerAnalyzer
 {
@@ -12,7 +13,7 @@ class ComposerAnalyzer
         private string $targetVersion
     ) {}
 
-    public function analyze()
+    public function analyze(): array
     {
         return collect([
             $this->checkPhpVersion(),
@@ -22,7 +23,7 @@ class ComposerAnalyzer
     }
 
     // PHP version check — if the skeleton requires a higher PHP version than the user has, that's an issue
-    private function checkPhpVersion()
+    private function checkPhpVersion(): array
     {
         $requiredPhp = $this->parseRequiredPhpFromPatch();
 
@@ -40,7 +41,7 @@ class ComposerAnalyzer
         ];
     }
 
-    private function parseRequiredPhpFromPatch()
+    private function parseRequiredPhpFromPatch(): ?string
     {
         $patch = $this->skeletonFiles[0]['patch'] ?? '';
 
@@ -60,7 +61,7 @@ class ComposerAnalyzer
     }
 
     // Simple constraint check — handles ^ and >= for now
-    private function satisfiesConstraint(string $actual, string $required)
+    private function satisfiesConstraint(string $actual, string $required): bool
     {
         try {
             return Semver::satisfies($actual, $required);
@@ -70,7 +71,7 @@ class ComposerAnalyzer
     }
 
     // Check each package in the user's composer.json to see if it has a version that supports the target Laravel version
-    private function checkPackageCompatibility()
+    private function checkPackageCompatibility(): array
     {
         $skip = ['php', 'laravel/framework', 'mmstewart/laravel-x-ray', 'composer/semver'];
 
@@ -82,7 +83,7 @@ class ComposerAnalyzer
             ->toArray();
     }
 
-    private function buildCompatibilityIssue(string $package)
+    private function buildCompatibilityIssue(string $package): ?array
     {
         $compatible = $this->isPackageCompatible($package, $this->targetVersion);
 
@@ -103,7 +104,7 @@ class ComposerAnalyzer
         };
     }
 
-    private function checkDevDependencyVersions()
+    private function checkDevDependencyVersions(): array
     {
         $skeletonDevDeps = $this->getSkeletonComposer()['require-dev'] ?? [];
 
@@ -120,7 +121,7 @@ class ComposerAnalyzer
             ])->values()->toArray();
     }
 
-    private function getUserDevPackages()
+    private function getUserDevPackages(): array
     {
         $path = base_path('composer.json');
 
@@ -133,7 +134,7 @@ class ComposerAnalyzer
         return $composer['require-dev'] ?? [];
     }
 
-    private function getSkeletonComposer()
+    private function getSkeletonComposer(): array
     {
         $response = Http::withHeaders([
             'Authorization' => 'Bearer '.config('x-ray.github_token'),
@@ -146,7 +147,7 @@ class ComposerAnalyzer
     }
 
     // Only check production dependencies, not dev
-    private function getUserPackages()
+    private function getUserPackages(): array
     {
         $path = base_path('composer.json');
 
@@ -160,7 +161,7 @@ class ComposerAnalyzer
     }
 
     // Returns true = compatible, false = incompatible, null = unknown
-    private function isPackageCompatible(string $package, string $targetLaravel)
+    private function isPackageCompatible(string $package, string $targetLaravel): ?bool
     {
         $response = Http::withHeaders([
             'Accept' => 'application/json',
@@ -173,17 +174,11 @@ class ComposerAnalyzer
         foreach ($response->json('package.versions', []) as $version) {
             $laravelConstraint = $version['require']['laravel/framework'] ?? $version['require']['illuminate/support'] ?? null;
 
-            if ($laravelConstraint && $this->satisfiesConstraint($this->normalizeVersion($targetLaravel), $laravelConstraint)) {
+            if ($laravelConstraint && $this->satisfiesConstraint(LaravelVersionResolver::normalizeVersion($targetLaravel), $laravelConstraint)) {
                 return true;
             }
         }
 
         return false;
-    }
-
-    private function normalizeVersion(string $version)
-    {
-        // Convert '12.x' to '12.0.0'
-        return str_replace('.x', '.0.0', $version);
     }
 }

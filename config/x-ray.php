@@ -17,29 +17,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Valid Laravel Versions
-    |--------------------------------------------------------------------------
-    |
-    | The Laravel versions X-Ray can compare between. Add new versions here
-    | when Laravel releases a new major version without needing a package update.
-    |
-    */
-
-    'valid_laravel_versions' => ['8.x', '9.x', '10.x', '11.x', '12.x', '13.x'],
-
-    /*
-    |--------------------------------------------------------------------------
     | Cache
     |--------------------------------------------------------------------------
     |
     | GitHub API responses are cached to avoid hitting rate limits. You can
-    | disable caching or adjust the duration (in seconds) here.
+    | disable caching or adjust the duration (in minutes) here.
     |
     */
 
     'cache' => [
         'enabled' => true,
-        'duration' => 86400, // 24 hours — skeleton diffs never change after release
+        'skeleton' => 60 * 24 * 7,  // 7 days
+        'default_branch' => 60 * 24,  // 1 day
+        'packagist' => 60 * 2,  // 2 hours
     ],
 
     /*
