@@ -10,17 +10,16 @@ class EnvAnalyzer
 
     public function analyze(): array
     {
-        if (empty($this->skeletonFiles)) {
+        $patch = $this->getEnvPatch();
+
+        if (! $patch) {
             return [];
         }
 
-        $patch = $this->skeletonFiles[0]['patch'] ?? '';
-
-        $addedKeys = $this->parseAddedKeys($patch);
-
-        $userKeys = $this->getUserEnvKeys();
-
-        $missingKeys = array_diff($addedKeys, $userKeys);
+        $missingKeys = array_diff(
+            $this->parseAddedKeys($patch),
+            $this->getUserEnvKeys()
+        );
 
         return collect($missingKeys)
             ->map(fn ($key) => [
@@ -33,30 +32,32 @@ class EnvAnalyzer
             ->toArray();
     }
 
+    private function getEnvPatch(): ?string
+    {
+        return collect($this->skeletonFiles)
+            ->firstWhere('filename', '.env.example')['patch'] ?? null;
+    }
+
     // Pull keys from lines added in the patch (lines starting with +)
     private function parseAddedKeys(string $patch): array
     {
         $keys = [];
 
         foreach (explode("\n", $patch) as $line) {
-            // Lines starting with + are additions, skip +++ header lines
-            if (str_starts_with($line, '+') && ! str_starts_with($line, '+++')) {
-                $line = ltrim($line, '+');
-                $line = trim($line);
-
-                // Skip empty lines and comments
-                if (empty($line) || str_starts_with($line, '#')) {
-                    continue;
-                }
-
-                // Extract the key from KEY=VALUE
-                $key = explode('=', $line)[0];
-
-                $keys[] = trim($key);
+            if (! str_starts_with($line, '+') || str_starts_with($line, '+++')) {
+                continue;
             }
+
+            $line = trim(ltrim($line, '+'));
+
+            if (empty($line) || str_starts_with($line, '#')) {
+                continue;
+            }
+
+            $keys[] = trim(strtok($line, '='));
         }
 
-        return $keys;
+        return array_unique($keys);
     }
 
     // Read the user's actual .env.example and extract keys
@@ -77,9 +78,9 @@ class EnvAnalyzer
                 continue;
             }
 
-            $keys[] = explode('=', $line)[0];
+            $keys[] = trim(strtok($line, '='));
         }
 
-        return $keys;
+        return array_unique($keys);
     }
 }

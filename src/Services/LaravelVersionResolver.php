@@ -11,6 +11,11 @@ class LaravelVersionResolver
         return app()->version();
     }
 
+    public static function normalizeVersion(string $version): string
+    {
+        return str_replace('.x', '.0.0', $version);
+    }
+
     public function currentBranch(): string
     {
         return explode('.', $this->version())[0].'.x';
@@ -18,17 +23,21 @@ class LaravelVersionResolver
 
     public function targetBranch(): string
     {
+        if (! config('x-ray.cache.enabled')) {
+            return $this->fetchTargetBranch();
+        }
+
         return Cache::remember(
             'xray:default_branch',
             now()->addMinutes(config('x-ray.cache.default_branch')),
-            fn () => app(GithubClient::class)
-                ->repository('laravel/laravel')
-                ->json('default_branch')
+            fn () => $this->fetchTargetBranch()
         );
     }
 
-    public static function normalizeVersion(string $version): string
+    private function fetchTargetBranch(): string
     {
-        return str_replace('.x', '.0.0', $version);
+        return app(GithubClient::class)
+            ->repository('laravel/laravel')
+            ->json('default_branch', 'main');
     }
 }

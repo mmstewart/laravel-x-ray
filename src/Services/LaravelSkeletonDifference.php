@@ -22,11 +22,7 @@ class LaravelSkeletonDifference
     private function fetchCompare(string $from, string $to): array
     {
         return app(GithubClient::class)
-            ->compare(
-                'laravel/laravel',
-                $from,
-                $to
-            )
+            ->compare('laravel/laravel', $from, $to)
             ->json('files', []);
     }
 }

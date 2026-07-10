@@ -3,20 +3,24 @@
 namespace Mmstewart\LaravelXRay\Reports;
 
 use Illuminate\Console\Command;
+use Illuminate\Support\Collection;
 
 class LaravelXRayReport
 {
     public function __construct(
-        private Command $command
+        private Command $command,
     ) {}
 
     public function display(array $results): void
     {
-        $severityOrder = ['info' => 0, 'warning' => 1, 'error' => 2];
+        $severityLevels = ['info' => 0, 'warning' => 1, 'error' => 2];
         $minimum = config('x-ray.minimum_severity', 'info');
 
         $results = collect($results)
-            ->filter(fn ($issue) => $severityOrder[$issue['severity']] >= $severityOrder[$minimum])
+            ->filter(fn ($issue) =>
+                isset($severityLevels[$issue['severity']])
+                && $severityLevels[$issue['severity']] >= $severityLevels[$minimum]
+            )
             ->toArray();
 
         $errors = collect($results)->where('severity', 'error');
@@ -25,39 +29,36 @@ class LaravelXRayReport
 
         $this->command->line('');
         $this->command->line(str_repeat('─', 50));
+        $this->command->line('Laravel X-Ray Upgrade Report');
+        $this->command->line(str_repeat('─', 50));
         $this->command->line('');
 
-        if ($errors->isNotEmpty()) {
-            $this->command->line("❌ ERRORS ({$errors->count()})");
+        $this->renderSection('ERRORS', '❌', $errors);
+        $this->renderSection('WARNINGS', '⚠️ ', $warnings);
+        $this->renderSection('INFO', 'ℹ️', $info);
 
-            $errors->each(fn ($issue) => $this->command->line("  • {$issue['message']}"));
-
-            $this->command->line('');
-        }
-
-        if ($warnings->isNotEmpty()) {
-            $this->command->line("⚠️  WARNINGS ({$warnings->count()})");
-
-            $warnings->each(fn ($issue) => $this->command->line("  • {$issue['message']}"));
-
-            $this->command->line('');
-        }
-
-        if ($info->isNotEmpty()) {
-            $this->command->line("ℹ️  INFO ({$info->count()})");
-
-            $info->each(fn ($issue) => $this->command->line("  • {$issue['message']}"));
-
-            $this->command->line('');
-        }
-
-        if ($results === []) {
+        if (collect($results)->isEmpty()) {
             $this->command->info('✅ No issues found — you are ready to upgrade!');
             $this->command->line('');
         }
 
         $this->command->line(str_repeat('─', 50));
         $this->command->line("{$errors->count()} errors, {$warnings->count()} warnings, {$info->count()} info");
+        $this->command->line('');
+    }
+
+    private function renderSection(string $title, string $icon, Collection $issues): void 
+    {
+        if ($issues->isEmpty()) {
+            return;
+        }
+
+        $this->command->line("{$icon} {$title} ({$issues->count()})");
+
+        $issues->each(
+            fn ($issue) => $this->command->line("  • {$issue['message']}")
+        );
+
         $this->command->line('');
     }
 }

@@ -2,7 +2,7 @@
 
 namespace Mmstewart\LaravelXRay\Services;
 
-class Categorizer
+class LaravelSkeletonCategorizer
 {
     public function categorize(array $files): array
     {

@@ -3,7 +3,10 @@
 namespace Mmstewart\LaravelXRay\Analyzers;
 
 use Composer\Semver\Semver;
+use Composer\Semver\VersionParser;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Mmstewart\LaravelXRay\Services\GithubClient;
 use Mmstewart\LaravelXRay\Services\LaravelVersionResolver;
 
 class ComposerAnalyzer
@@ -12,6 +15,8 @@ class ComposerAnalyzer
         private array $skeletonFiles,
         private string $targetVersion
     ) {}
+
+    private ?array $composer = null;
 
     public function analyze(): array
     {
@@ -43,17 +48,20 @@ class ComposerAnalyzer
 
     private function parseRequiredPhpFromPatch(): ?string
     {
-        $patch = $this->skeletonFiles[0]['patch'] ?? '';
+        $composer = collect($this->skeletonFiles)
+            ->firstWhere('filename', 'composer.json');
 
-        foreach (explode("\n", $patch) as $line) {
-            // Look for added lines that mention php version requirement
-            if (str_starts_with($line, '+') && ! str_starts_with($line, '+++')) {
-                if (str_contains($line, '"php"')) {
-                    // Extract version constraint e.g. "^8.2"
-                    preg_match('/"php":\s*"([^"]+)"/', $line, $matches);
+        if (! $composer) {
+            return null;
+        }
 
-                    return $matches[1] ?? null;
-                }
+        foreach (explode("\n", $composer['patch'] ?? '') as $line) {
+            if (
+                str_starts_with($line, '+')
+                && ! str_starts_with($line, '+++')
+                && preg_match('/"php":\s*"([^"]+)"/', $line, $matches)
+            ) {
+                return $matches[1];
             }
         }
 
@@ -65,7 +73,7 @@ class ComposerAnalyzer
     {
         try {
             return Semver::satisfies($actual, $required);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             return false;
         }
     }
@@ -77,31 +85,38 @@ class ComposerAnalyzer
 
         return collect($this->getUserPackages())
             ->reject(fn ($version, $package) => in_array($package, $skip))
-            ->map(fn ($version, $package) => $this->buildCompatibilityIssue($package))
+            ->map(fn ($constraint, $package) => $this->buildCompatibilityIssue(
+                $package,
+                $constraint
+            ))
             ->filter()
             ->values()
             ->toArray();
     }
 
-    private function buildCompatibilityIssue(string $package): ?array
+    private function buildCompatibilityIssue(string $package, string $installedConstraint): ?array
     {
-        $compatible = $this->isPackageCompatible($package, $this->targetVersion);
+        $compatibleVersion  = $this->findCompatibleVersion($package, $this->targetVersion);
 
-        return match ($compatible) {
-            false => [
+        if ($compatibleVersion === null) {
+            return [
                 'type' => 'composer',
                 'severity' => 'error',
                 'message' => "{$package} has no version that supports Laravel {$this->targetVersion}",
                 'key' => $package,
-            ],
-            null => [
+            ];
+        }
+
+        if (! Semver::satisfies($compatibleVersion, $installedConstraint)) {
+            return [
                 'type' => 'composer',
-                'severity' => 'info',
-                'message' => "{$package} could not be checked on Packagist",
+                'severity' => 'warning',
+                'message' => "{$package} ({$installedConstraint}) should be upgraded to ^".explode('.', $compatibleVersion)[0].".{$compatibleVersion} before upgrading Laravel {$this->targetVersion}.",
                 'key' => $package,
-            ],
-            default => null,
-        };
+            ];
+        }
+
+        return null;
     }
 
     private function checkDevDependencyVersions(): array
@@ -110,38 +125,85 @@ class ComposerAnalyzer
 
         $userDevDeps = $this->getUserDevPackages();
 
-        return collect($skeletonDevDeps)
-            ->filter(fn ($skeletonVersion, $package) => isset($userDevDeps[$package]))
-            ->reject(fn ($skeletonVersion, $package) => $userDevDeps[$package] === $skeletonVersion)
-            ->map(fn ($skeletonVersion, $package) => [
+         return collect($skeletonDevDeps)
+            ->filter(fn ($constraint, $package) => isset($userDevDeps[$package]))
+            ->filter(fn ($constraint, $package) =>
+                ! $this->satisfiesDevDependency(
+                    $userDevDeps[$package],
+                    $constraint
+                )
+            )
+            ->map(fn ($constraint, $package) => [
                 'type' => 'composer',
                 'severity' => 'warning',
-                'message' => "{$package} version mismatch — you have {$userDevDeps[$package]}, Laravel {$this->targetVersion} recommends {$skeletonVersion}",
+                'message' => "{$package} ({$userDevDeps[$package]}) should be upgraded to {$constraint} before upgrading Laravel {$this->targetVersion}.",
                 'key' => $package,
-            ])->values()->toArray();
+            ])
+            ->values()
+            ->toArray();
+    }
+
+    private function satisfiesDevDependency(string $installed, string $required): bool 
+    {
+        try {
+            $parser = new VersionParser();
+
+            $installedConstraint = $parser->parseConstraints($installed);
+            $requiredConstraint = $parser->parseConstraints($required);
+
+            return $installedConstraint->matches($requiredConstraint);
+
+        } catch (\Throwable) {
+            return false;
+        }
+    }
+
+    private function composer(): array
+    {
+        if ($this->composer !== null) {
+            return $this->composer;
+        }
+
+        $path = base_path('composer.json');
+
+        if (! file_exists($path)) {
+            return $this->composer = [];
+        }
+
+        return $this->composer = json_decode(
+            file_get_contents($path),
+            true
+        ) ?? [];
     }
 
     private function getUserDevPackages(): array
     {
-        $path = base_path('composer.json');
-
-        if (! file_exists($path)) {
-            return [];
-        }
-
-        $composer = json_decode(file_get_contents($path), true);
-
-        return $composer['require-dev'] ?? [];
+        return $this->composer()['require-dev'] ?? [];
     }
 
     private function getSkeletonComposer(): array
     {
-        $response = Http::withHeaders([
-            'Authorization' => 'Bearer '.config('x-ray.github_token'),
-            'Accept' => 'application/vnd.github+json',
-        ])->get("https://api.github.com/repos/laravel/laravel/contents/composer.json?ref={$this->targetVersion}");
+        if (! config('x-ray.cache.enabled')) {
+            return $this->fetchSkeletonComposer();
+        }
 
-        $content = base64_decode($response->json('content'));
+        return Cache::remember(
+            "xray:skeleton:composer:{$this->targetVersion}",
+            now()->addMinutes(config('x-ray.cache.skeleton')),
+            fn () => $this->fetchSkeletonComposer()
+        );
+    }
+
+    private function fetchSkeletonComposer(): array
+    {
+        $response = app(GithubClient::class)
+            ->repository("laravel/laravel/contents/composer.json?ref={$this->targetVersion}");
+
+        if (! $response->successful()) {
+            return [];
+        }
+
+        $content = base64_decode($response->json('content', ''));
 
         return json_decode($content, true);
     }
@@ -149,19 +211,23 @@ class ComposerAnalyzer
     // Only check production dependencies, not dev
     private function getUserPackages(): array
     {
-        $path = base_path('composer.json');
-
-        if (! file_exists($path)) {
-            return [];
-        }
-
-        $composer = json_decode(file_get_contents($path), true);
-
-        return $composer['require'] ?? [];
+        return $this->composer()['require'] ?? [];
     }
 
-    // Returns true = compatible, false = incompatible, null = unknown
-    private function isPackageCompatible(string $package, string $targetLaravel): ?bool
+    private function getPackagistVersions(string $package): ?array
+    {
+        if (! config('x-ray.cache.enabled')) {
+            return $this->fetchPackagistVersions($package);
+        }
+
+        return Cache::remember(
+            "xray:packagist:{$package}",
+            now()->addMinutes(config('x-ray.cache.packagist')),
+            fn () => $this->fetchPackagistVersions($package)
+        );
+    }
+
+    private function fetchPackagistVersions(string $package): ?array
     {
         $response = Http::withHeaders([
             'Accept' => 'application/json',
@@ -171,14 +237,38 @@ class ComposerAnalyzer
             return null;
         }
 
-        foreach ($response->json('package.versions', []) as $version) {
-            $laravelConstraint = $version['require']['laravel/framework'] ?? $version['require']['illuminate/support'] ?? null;
+        return $response->json('package.versions', []);
+    }
 
-            if ($laravelConstraint && $this->satisfiesConstraint(LaravelVersionResolver::normalizeVersion($targetLaravel), $laravelConstraint)) {
-                return true;
+    // Returns true = compatible, false = incompatible, null = unknown
+    private function findCompatibleVersion(string $package, string $targetLaravel): ?string
+    {
+        $versions = $this->getPackagistVersions($package);
+
+        if ($versions === null) {
+            return null;
+        }
+
+        foreach ($versions as $version => $details) {
+            $laravelConstraint = collect($details['require'] ?? [])
+                ->filter(
+                    fn ($constraint, $dependency) =>
+                        $dependency === 'laravel/framework'
+                        || str_starts_with($dependency, 'illuminate/')
+                )
+                ->first();
+
+            if (
+                $laravelConstraint &&
+                $this->satisfiesConstraint(
+                    LaravelVersionResolver::normalizeVersion($targetLaravel),
+                    $laravelConstraint
+                )
+            ) {
+                return $version;
             }
         }
 
-        return false;
+        return null;
     }
 }
