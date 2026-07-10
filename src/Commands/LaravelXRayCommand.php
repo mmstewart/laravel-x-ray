@@ -5,11 +5,11 @@ namespace Mmstewart\LaravelXRay\Commands;
 use Illuminate\Console\Command;
 use Mmstewart\LaravelXRay\Analyzers\ComposerAnalyzer;
 use Mmstewart\LaravelXRay\Analyzers\EnvAnalyzer;
+use Mmstewart\LaravelXRay\Reports\LaravelXRayReport;
 use Mmstewart\LaravelXRay\Services\Categorizer;
 use Mmstewart\LaravelXRay\Services\LaravelContext;
 use Mmstewart\LaravelXRay\Services\LaravelSkeletonDifference;
 use Mmstewart\LaravelXRay\Services\LaravelVersionResolver;
-use Mmstewart\LaravelXRay\Reports\LaravelXRayReport;
 
 class LaravelXRayCommand extends Command
 {
@@ -19,7 +19,7 @@ class LaravelXRayCommand extends Command
 
     public function handle(): int
     {
-        $versionResolver = new LaravelVersionResolver();
+        $versionResolver = new LaravelVersionResolver;
 
         $context = new LaravelContext(
             installedVersion: $versionResolver->version(),
@@ -29,7 +29,7 @@ class LaravelXRayCommand extends Command
 
         [$from, $to] = $this->resolveBranches($context);
 
-        if (!$this->isValidUpgrade($from, $to)) {
+        if (! $this->isValidUpgrade($from, $to)) {
             return self::FAILURE;
         }
 
@@ -45,7 +45,7 @@ class LaravelXRayCommand extends Command
 
         $skeletonFiles = $this->fetchSkeletonDiff($from, $to);
 
-        $categorizedFiles = (new Categorizer())->categorize($skeletonFiles);
+        $categorizedFiles = (new Categorizer)->categorize($skeletonFiles);
 
         $analyzers = $this->buildAnalyzers($to, $categorizedFiles);
 
@@ -63,8 +63,8 @@ class LaravelXRayCommand extends Command
      * Laravel major version is greater than the source. It currently assumes
      * branch names start with the major version (e.g. "11.x", "12.x").
      *
-     * @param string $from Source branch or version
-     * @param string $to   Target branch or version
+     * @param  string  $from  Source branch or version
+     * @param  string  $to  Target branch or version
      * @return bool True when upgrade is valid, false otherwise
      */
     private function isValidUpgrade(string $from, string $to): bool
@@ -101,14 +101,13 @@ class LaravelXRayCommand extends Command
      */
     private function fetchSkeletonDiff(string $from, string $to): array
     {
-        return (new LaravelSkeletonDifference())->fetch($from, $to);
+        return (new LaravelSkeletonDifference)->fetch($from, $to);
     }
 
     /**
      * Build the analyzers registry for execution.
      *
-     * @param string $to
-     * @param array<string,mixed> $categorized
+     * @param  array<string,mixed>  $categorized
      * @return array<string,callable>
      */
     private function buildAnalyzers(string $to, array $categorized): array
@@ -122,7 +121,7 @@ class LaravelXRayCommand extends Command
     /**
      * Run the configured analyzers honoring config toggles.
      *
-     * @param array<string,callable> $analyzers
+     * @param  array<string,callable>  $analyzers
      * @return array<int,mixed>
      */
     private function runAnalyzers(array $analyzers): array
@@ -139,8 +138,7 @@ class LaravelXRayCommand extends Command
      * The `LaravelXRayReport` is responsible for formatting and output; this
      * method delegates to it so the command remains focused on orchestration.
      *
-     * @param array<int,mixed> $results Analyzer results to render
-     * @return void
+     * @param  array<int,mixed>  $results  Analyzer results to render
      */
     private function renderReport(array $results): void
     {

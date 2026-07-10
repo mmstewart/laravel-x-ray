@@ -13,7 +13,7 @@ class LaravelVersionResolver
 
     public function currentBranch(): string
     {
-        return explode('.', $this->version())[0] . '.x';
+        return explode('.', $this->version())[0].'.x';
     }
 
     public function targetBranch(): string

@@ -16,7 +16,7 @@ class LaravelXRayReport
         $minimum = config('x-ray.minimum_severity', 'info');
 
         $results = collect($results)
-            ->filter(fn($issue) => $severityOrder[$issue['severity']] >= $severityOrder[$minimum])
+            ->filter(fn ($issue) => $severityOrder[$issue['severity']] >= $severityOrder[$minimum])
             ->toArray();
 
         $errors = collect($results)->where('severity', 'error');
@@ -30,7 +30,7 @@ class LaravelXRayReport
         if ($errors->isNotEmpty()) {
             $this->command->line("❌ ERRORS ({$errors->count()})");
 
-            $errors->each(fn($issue) => $this->command->line("  • {$issue['message']}"));
+            $errors->each(fn ($issue) => $this->command->line("  • {$issue['message']}"));
 
             $this->command->line('');
         }
@@ -38,7 +38,7 @@ class LaravelXRayReport
         if ($warnings->isNotEmpty()) {
             $this->command->line("⚠️  WARNINGS ({$warnings->count()})");
 
-            $warnings->each(fn($issue) => $this->command->line("  • {$issue['message']}"));
+            $warnings->each(fn ($issue) => $this->command->line("  • {$issue['message']}"));
 
             $this->command->line('');
         }
@@ -46,7 +46,7 @@ class LaravelXRayReport
         if ($info->isNotEmpty()) {
             $this->command->line("ℹ️  INFO ({$info->count()})");
 
-            $info->each(fn($issue) => $this->command->line("  • {$issue['message']}"));
+            $info->each(fn ($issue) => $this->command->line("  • {$issue['message']}"));
 
             $this->command->line('');
         }
