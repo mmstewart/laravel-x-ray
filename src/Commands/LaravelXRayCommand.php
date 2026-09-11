@@ -3,7 +3,9 @@
 namespace Mmstewart\LaravelXRay\Commands;
 
 use Illuminate\Console\Command;
+use Mmstewart\LaravelXRay\Analyzers\BootstrapAnalyzer;
 use Mmstewart\LaravelXRay\Analyzers\ComposerAnalyzer;
+use Mmstewart\LaravelXRay\Analyzers\ConfigAnalyzer;
 use Mmstewart\LaravelXRay\Analyzers\EnvAnalyzer;
 use Mmstewart\LaravelXRay\Reports\LaravelXRayReport;
 use Mmstewart\LaravelXRay\Services\LaravelContext;
@@ -114,6 +116,8 @@ class LaravelXRayCommand extends Command
         return [
             'env' => fn () => (new EnvAnalyzer($categorized['env']))->analyze(),
             'composer' => fn () => (new ComposerAnalyzer($categorized['composer'], $to))->analyze(),
+            'config' => fn () => (new ConfigAnalyzer($categorized['config']))->analyze(),
+            'bootstrap' => fn () => (new BootstrapAnalyzer($categorized['bootstrap']))->analyze(),
         ];
     }
 

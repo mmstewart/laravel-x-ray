@@ -94,29 +94,75 @@ class ComposerAnalyzer
             ->toArray();
     }
 
-    private function buildCompatibilityIssue(string $package, string $installedConstraint): ?array
+    private function getInstalledPackageVersion(string $package): ?string
     {
-        $compatibleVersion = $this->findCompatibleVersion($package, $this->targetVersion);
+        $lockPath = base_path('composer.lock');
 
-        if ($compatibleVersion === null) {
-            return [
-                'type' => 'composer',
-                'severity' => 'error',
-                'message' => "{$package} has no version that supports Laravel {$this->targetVersion}",
-                'key' => $package,
-            ];
+        if (! file_exists($lockPath)) {
+            return null;
         }
 
-        if (! Semver::satisfies($compatibleVersion, $installedConstraint)) {
-            return [
-                'type' => 'composer',
-                'severity' => 'warning',
-                'message' => "{$package} ({$installedConstraint}) should be upgraded to ^".explode('.', $compatibleVersion)[0].".{$compatibleVersion} before upgrading Laravel {$this->targetVersion}.",
-                'key' => $package,
-            ];
+        $lock = json_decode(file_get_contents($lockPath), true) ?? [];
+
+        foreach ([
+            ...($lock['packages'] ?? []),
+            ...($lock['packages-dev'] ?? []),
+        ] as $installed) {
+            if (($installed['name'] ?? null) === $package) {
+                return ltrim($installed['version'], 'v');
+            }
         }
 
         return null;
+    }
+
+    private function buildCompatibilityIssue(string $package, string $installedConstraint): ?array
+    {
+        $skeletonComposer = $this->getSkeletonComposer();
+
+        // Laravel skeleton dependency
+        if (isset($skeletonComposer['require'][$package])) {
+            $recommended = $skeletonComposer['require'][$package];
+
+            if ($installedConstraint === $recommended) {
+                return null;
+            }
+
+            return [
+                'type' => 'composer',
+                'severity' => 'warning',
+                'message' => "{$package} ({$installedConstraint}) requires adjustment for Laravel {$this->targetVersion} compatibility. Recommended constraint: {$recommended}.",
+                'key' => $package,
+            ];
+        }
+
+        // Third-party dependency
+        $recommended = $this->findCompatibleVersion($package, $this->targetVersion);
+
+        if ($recommended === null) {
+            return [
+                'type' => 'composer',
+                'severity' => 'info',
+                'message' => "{$package} could not be checked for Laravel {$this->targetVersion} compatibility.",
+                'key' => $package,
+            ];
+        }
+
+        if ($this->satisfiesConstraint($recommended, $installedConstraint)) {
+            return null;
+        }
+
+        return [
+            'type' => 'composer',
+            'severity' => 'warning',
+            'message' => "{$package} ({$installedConstraint}) requires adjustment for Laravel {$this->targetVersion} compatibility. Recommended version: {$this->recommendedConstraint($recommended)}.",
+            'key' => $package,
+        ];
+    }
+
+    private function recommendedConstraint(string $version): string
+    {
+        return '^'.ltrim($version, 'v');
     }
 
     private function checkDevDependencyVersions(): array
@@ -127,34 +173,17 @@ class ComposerAnalyzer
 
         return collect($skeletonDevDeps)
             ->filter(fn ($constraint, $package) => isset($userDevDeps[$package]))
-            ->filter(fn ($constraint, $package) => ! $this->satisfiesDevDependency(
-                $userDevDeps[$package],
-                $constraint
-            )
+            ->filter(fn ($constraint, $package) => 
+                $userDevDeps[$package] !== $constraint
             )
             ->map(fn ($constraint, $package) => [
                 'type' => 'composer',
                 'severity' => 'warning',
-                'message' => "{$package} ({$userDevDeps[$package]}) should be upgraded to {$constraint} before upgrading Laravel {$this->targetVersion}.",
+                'message' => "{$package} ({$userDevDeps[$package]}) requires adjustment for Laravel {$this->targetVersion} compatibility. Recommended constraint: {$constraint}.",
                 'key' => $package,
             ])
             ->values()
             ->toArray();
-    }
-
-    private function satisfiesDevDependency(string $installed, string $required): bool
-    {
-        try {
-            $parser = new VersionParser;
-
-            $installedConstraint = $parser->parseConstraints($installed);
-            $requiredConstraint = $parser->parseConstraints($required);
-
-            return $installedConstraint->matches($requiredConstraint);
-
-        } catch (\Throwable) {
-            return false;
-        }
     }
 
     private function composer(): array
@@ -244,26 +273,38 @@ class ComposerAnalyzer
     {
         $versions = $this->getPackagistVersions($package);
 
-        if ($versions === null) {
-            return null;
+        foreach ($versions as $version => $details) {
+            if (str_contains($version, '-dev')) {
+                continue;
+            }
+
+            $requires = $details['require'] ?? [];
+
+            $laravelConstraint = $this->getLaravelConstraint($requires);
+
+            if (! $laravelConstraint) {
+                continue;
+            }
+
+            if ($this->satisfiesConstraint(
+                LaravelVersionResolver::normalizeVersion($targetLaravel),
+                $laravelConstraint
+            )) {
+                return $version;
+            }
         }
 
-        foreach ($versions as $version => $details) {
-            $laravelConstraint = collect($details['require'] ?? [])
-                ->filter(
-                    fn ($constraint, $dependency) => $dependency === 'laravel/framework'
-                        || str_starts_with($dependency, 'illuminate/')
-                )
-                ->first();
+        return null;
+    }
 
+    private function getLaravelConstraint(array $requires): ?string
+    {
+        foreach ($requires as $package => $constraint) {
             if (
-                $laravelConstraint &&
-                $this->satisfiesConstraint(
-                    LaravelVersionResolver::normalizeVersion($targetLaravel),
-                    $laravelConstraint
-                )
+                $package === 'laravel/framework'
+                || str_starts_with($package, 'illuminate/')
             ) {
-                return $version;
+                return $constraint;
             }
         }
 
