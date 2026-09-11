@@ -3,7 +3,6 @@
 namespace Mmstewart\LaravelXRay\Analyzers;
 
 use Composer\Semver\Semver;
-use Composer\Semver\VersionParser;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Mmstewart\LaravelXRay\Services\GithubClient;
@@ -173,8 +172,7 @@ class ComposerAnalyzer
 
         return collect($skeletonDevDeps)
             ->filter(fn ($constraint, $package) => isset($userDevDeps[$package]))
-            ->filter(fn ($constraint, $package) => 
-                $userDevDeps[$package] !== $constraint
+            ->filter(fn ($constraint, $package) => $userDevDeps[$package] !== $constraint
             )
             ->map(fn ($constraint, $package) => [
                 'type' => 'composer',
