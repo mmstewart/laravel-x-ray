@@ -18,34 +18,34 @@ class ConfigAnalyzer
             ->toArray();
     }
 
-    private function analyzeFile(array $file): array 
-    { 
-        $filename = $file['filename']; 
+    private function analyzeFile(array $file): array
+    {
+        $filename = $file['filename'];
 
-        $status = $file['status'] ?? null; 
-        
-        $exists = file_exists(base_path($filename)); 
-        
-        if ($status === 'removed' && $exists) { 
-            return [
-                [ 
-                    'type' => 'config', 
-                    'severity' => 'info', 
-                    'message' => "Config file {$filename} was removed from the Laravel {$this->targetVersion} skeleton. Review whether it is still needed.", 
-                    'key' => $filename, 
-                ],
-            ]; 
-        } 
+        $status = $file['status'] ?? null;
 
-        if ($status === 'added' && !$exists) { 
+        $exists = file_exists(base_path($filename));
+
+        if ($status === 'removed' && $exists) {
             return [
                 [
-                    'type' => 'config', 
-                    'severity' => 'info', 
-                    'message' => "Config file {$filename} was added to the Laravel {$this->targetVersion} skeleton. Review whether it is needed.", 
+                    'type' => 'config',
+                    'severity' => 'info',
+                    'message' => "Config file {$filename} was removed from the Laravel {$this->targetVersion} skeleton. Review whether it is still needed.",
                     'key' => $filename,
                 ],
-            ]; 
+            ];
+        }
+
+        if ($status === 'added' && ! $exists) {
+            return [
+                [
+                    'type' => 'config',
+                    'severity' => 'info',
+                    'message' => "Config file {$filename} was added to the Laravel {$this->targetVersion} skeleton. Review whether it is needed.",
+                    'key' => $filename,
+                ],
+            ];
         }
 
         if ($status === 'modified' && $exists) {
@@ -58,7 +58,7 @@ class ConfigAnalyzer
                 ],
             ];
         }
-        
-        return []; 
-    }  
+
+        return [];
+    }
 }

@@ -83,7 +83,7 @@ class ComposerAnalyzer
             'php',
             'laravel/framework',
             'mmstewart/laravel-x-ray',
-            'composer/semver'
+            'composer/semver',
         ];
 
         return collect($this->getUserPackages())
