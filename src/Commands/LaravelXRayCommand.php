@@ -71,9 +71,10 @@ class LaravelXRayCommand extends Command
     private function isValidUpgrade(string $from, string $to): bool
     {
         $fromVersion = LaravelVersionResolver::normalizeVersion($from);
+
         $toVersion = LaravelVersionResolver::normalizeVersion($to);
 
-        if (! version_compare($fromVersion, $toVersion, '<')) {
+        if (version_compare($fromVersion, $toVersion, '>')) {
             $this->error("Invalid upgrade path: {$from} → {$to}");
 
             return false;
@@ -90,6 +91,7 @@ class LaravelXRayCommand extends Command
     private function resolveBranches(LaravelContext $context): array
     {
         $from = $this->argument('from') ?? $context->currentBranch;
+
         $to = $this->argument('to') ?? $context->targetBranch;
 
         return [$from, $to];
@@ -116,7 +118,7 @@ class LaravelXRayCommand extends Command
         return [
             'env' => fn () => (new EnvAnalyzer($categorized['env']))->analyze(),
             'composer' => fn () => (new ComposerAnalyzer($categorized['composer'], $to))->analyze(),
-            'config' => fn () => (new ConfigAnalyzer($categorized['config']))->analyze(),
+            'config' => fn () => (new ConfigAnalyzer($categorized['config'], $to))->analyze(),
             'bootstrap' => fn () => (new BootstrapAnalyzer($categorized['bootstrap']))->analyze(),
         ];
     }

@@ -27,12 +27,14 @@ class BootstrapAnalyzer
         }
 
         if ($this->isLegacyBootstrap($userBootstrap)) {
-            return [[
-                'type' => 'bootstrap',
-                'severity' => 'error',
-                'message' => 'bootstrap/app.php is using the legacy Laravel bootstrap pattern. It needs to be migrated to Application::configure().',
-                'key' => 'bootstrap/app.php',
-            ]];
+            return [
+                [
+                    'type' => 'bootstrap',
+                    'severity' => 'error',
+                    'message' => 'bootstrap/app.php is using the legacy Laravel bootstrap pattern. It needs to be migrated to Application::configure().',
+                    'key' => 'bootstrap/app.php',
+                ],
+            ];
         }
 
         $patch = $this->skeletonFiles[0]['patch'] ?? '';

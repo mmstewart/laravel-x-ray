@@ -14,12 +14,11 @@ class LaravelXRayReport
     public function display(array $results): void
     {
         $severityLevels = ['info' => 0, 'warning' => 1, 'error' => 2];
+
         $minimum = config('x-ray.minimum_severity', 'info');
 
         $results = collect($results)
-            ->filter(fn ($issue) => isset($severityLevels[$issue['severity']])
-                && $severityLevels[$issue['severity']] >= $severityLevels[$minimum]
-            )
+            ->filter(fn ($issue) => isset($severityLevels[$issue['severity']]) && $severityLevels[$issue['severity']] >= $severityLevels[$minimum])
             ->toArray();
 
         $errors = collect($results)->where('severity', 'error');
@@ -34,7 +33,7 @@ class LaravelXRayReport
 
         $this->renderSection('ERRORS', '❌', $errors);
         $this->renderSection('WARNINGS', '⚠️ ', $warnings);
-        $this->renderSection('INFO', 'ℹ️', $info);
+        $this->renderSection('INFO', 'ℹ️ ', $info);
 
         if (collect($results)->isEmpty()) {
             $this->command->info('✅ No issues found — you are ready to upgrade!');

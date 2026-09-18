@@ -16,15 +16,12 @@ class EnvAnalyzer
             return [];
         }
 
-        $missingKeys = array_diff(
-            $this->parseAddedKeys($patch),
-            $this->getUserEnvKeys()
-        );
+        $missingKeys = array_diff($this->parseAddedKeys($patch), $this->getUserEnvKeys());
 
         return collect($missingKeys)
             ->map(fn ($key) => [
                 'type' => 'env',
-                'severity' => 'warning',
+                'severity' => 'info',
                 'message' => "Missing env key: {$key}",
                 'key' => $key,
             ])
@@ -34,8 +31,7 @@ class EnvAnalyzer
 
     private function getEnvPatch(): ?string
     {
-        return collect($this->skeletonFiles)
-            ->firstWhere('filename', '.env.example')['patch'] ?? null;
+        return collect($this->skeletonFiles)->firstWhere('filename', '.env.example')['patch'] ?? null;
     }
 
     // Pull keys from lines added in the patch (lines starting with +)
@@ -54,7 +50,9 @@ class EnvAnalyzer
                 continue;
             }
 
-            $keys[] = trim(strtok($line, '='));
+            if (preg_match('/^([A-Za-z_][A-Za-z0-9_]*)\s*=/', $line, $matches)) {
+                $keys[] = $matches[1];
+            }
         }
 
         return array_unique($keys);

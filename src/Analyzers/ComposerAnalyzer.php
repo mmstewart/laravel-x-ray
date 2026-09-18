@@ -47,8 +47,7 @@ class ComposerAnalyzer
 
     private function parseRequiredPhpFromPatch(): ?string
     {
-        $composer = collect($this->skeletonFiles)
-            ->firstWhere('filename', 'composer.json');
+        $composer = collect($this->skeletonFiles)->firstWhere('filename', 'composer.json');
 
         if (! $composer) {
             return null;
@@ -80,39 +79,19 @@ class ComposerAnalyzer
     // Check each package in the user's composer.json to see if it has a version that supports the target Laravel version
     private function checkPackageCompatibility(): array
     {
-        $skip = ['php', 'laravel/framework', 'mmstewart/laravel-x-ray', 'composer/semver'];
+        $skip = [
+            'php',
+            'laravel/framework',
+            'mmstewart/laravel-x-ray',
+            'composer/semver'
+        ];
 
         return collect($this->getUserPackages())
             ->reject(fn ($version, $package) => in_array($package, $skip))
-            ->map(fn ($constraint, $package) => $this->buildCompatibilityIssue(
-                $package,
-                $constraint
-            ))
+            ->map(fn ($constraint, $package) => $this->buildCompatibilityIssue($package, $constraint))
             ->filter()
             ->values()
             ->toArray();
-    }
-
-    private function getInstalledPackageVersion(string $package): ?string
-    {
-        $lockPath = base_path('composer.lock');
-
-        if (! file_exists($lockPath)) {
-            return null;
-        }
-
-        $lock = json_decode(file_get_contents($lockPath), true) ?? [];
-
-        foreach ([
-            ...($lock['packages'] ?? []),
-            ...($lock['packages-dev'] ?? []),
-        ] as $installed) {
-            if (($installed['name'] ?? null) === $package) {
-                return ltrim($installed['version'], 'v');
-            }
-        }
-
-        return null;
     }
 
     private function buildCompatibilityIssue(string $package, string $installedConstraint): ?array
@@ -172,8 +151,7 @@ class ComposerAnalyzer
 
         return collect($skeletonDevDeps)
             ->filter(fn ($constraint, $package) => isset($userDevDeps[$package]))
-            ->filter(fn ($constraint, $package) => $userDevDeps[$package] !== $constraint
-            )
+            ->filter(fn ($constraint, $package) => $userDevDeps[$package] !== $constraint)
             ->map(fn ($constraint, $package) => [
                 'type' => 'composer',
                 'severity' => 'warning',
@@ -196,10 +174,7 @@ class ComposerAnalyzer
             return $this->composer = [];
         }
 
-        return $this->composer = json_decode(
-            file_get_contents($path),
-            true
-        ) ?? [];
+        return $this->composer = json_decode(file_get_contents($path), true) ?? [];
     }
 
     private function getUserDevPackages(): array
@@ -222,11 +197,10 @@ class ComposerAnalyzer
 
     private function fetchSkeletonComposer(): array
     {
-        $response = app(GithubClient::class)
-            ->repository("laravel/laravel/contents/composer.json?ref={$this->targetVersion}");
+        $response = app(GithubClient::class)->repository("laravel/laravel/contents/composer.json?ref={$this->targetVersion}");
 
         if (! $response->successful()) {
-            return [];
+            throw new \RuntimeException("Unable to fetch Laravel {$this->targetVersion} skeleton from GitHub.");
         }
 
         $content = base64_decode($response->json('content', ''));
@@ -284,10 +258,7 @@ class ComposerAnalyzer
                 continue;
             }
 
-            if ($this->satisfiesConstraint(
-                LaravelVersionResolver::normalizeVersion($targetLaravel),
-                $laravelConstraint
-            )) {
+            if ($this->satisfiesConstraint(LaravelVersionResolver::normalizeVersion($targetLaravel), $laravelConstraint)) {
                 return $version;
             }
         }
@@ -298,10 +269,7 @@ class ComposerAnalyzer
     private function getLaravelConstraint(array $requires): ?string
     {
         foreach ($requires as $package => $constraint) {
-            if (
-                $package === 'laravel/framework'
-                || str_starts_with($package, 'illuminate/')
-            ) {
+            if ($package === 'laravel/framework' || str_starts_with($package, 'illuminate/')) {
                 return $constraint;
             }
         }

@@ -36,8 +36,6 @@ class LaravelVersionResolver
 
     private function fetchTargetBranch(): string
     {
-        return app(GithubClient::class)
-            ->repository('laravel/laravel')
-            ->json('default_branch', 'main');
+        return app(GithubClient::class)->repository('laravel/laravel')->json('default_branch', 'main');
     }
 }
