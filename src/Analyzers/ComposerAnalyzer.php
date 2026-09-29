@@ -245,6 +245,10 @@ class ComposerAnalyzer
     {
         $versions = $this->getPackagistVersions($package);
 
+        if ($versions === null) {
+            return null;
+        }
+
         foreach ($versions as $version => $details) {
             if (str_contains($version, '-dev')) {
                 continue;
