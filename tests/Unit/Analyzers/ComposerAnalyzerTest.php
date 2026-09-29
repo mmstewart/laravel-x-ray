@@ -285,8 +285,7 @@ it('fails when the laravel skeleton cannot be fetched from github', function () 
     Cache::forget('xray:skeleton:composer:13.x');
 
     Http::fake([
-        'api.github.com/repos/laravel/laravel/contents/composer.json*'
-            => Http::response([], 500),
+        'api.github.com/repos/laravel/laravel/contents/composer.json*' => Http::response([], 500),
     ]);
 
     expect(fn () => (new ComposerAnalyzer([], '13.x'))->analyze())
