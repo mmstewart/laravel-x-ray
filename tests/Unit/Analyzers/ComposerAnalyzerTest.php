@@ -15,14 +15,13 @@ afterEach(function () {
     rename($this->backupPath, $this->composerPath);
 });
 
-function skeletonComposer(array $composer): array
+function fakeLaravelSkeleton(array $composer): void
 {
-    return [
-        [
-            'filename' => 'composer.json',
-            'patch' => '',
-        ],
-    ];
+    Http::fake([
+        'api.github.com/repos/laravel/laravel/contents/composer.json*' => Http::response([
+            'content' => base64_encode(json_encode($composer)),
+        ]),
+    ]);
 }
 
 it('does not report a compatible php version', function () {
@@ -42,14 +41,10 @@ it('does not report a compatible php version', function () {
         ],
     ];
 
-    Http::fake([
-        'api.github.com/repos/laravel/laravel/contents/composer.json*' => Http::response([
-            'content' => base64_encode(json_encode([
-                'require' => [
-                    'php' => '^8.3',
-                ],
-            ])),
-        ]),
+    fakeLaravelSkeleton([
+        'require' => [
+            'php' => '^8.3',
+        ],
     ]);
 
     $results = (new ComposerAnalyzer($skeleton, '13.x'))->analyze();
@@ -77,6 +72,12 @@ it('reports an incompatible php version', function () {
         ],
     ];
 
+    fakeLaravelSkeleton([
+        'require' => [
+            'php' => '^8.3',
+        ],
+    ]);
+
     $results = (new ComposerAnalyzer($skeleton, '13.x'))->analyze();
 
     $issue = collect($results)->firstWhere('key', 'php');
@@ -98,15 +99,11 @@ it('reports a dependency constraint that differs from the skeleton', function ()
         ])
     );
 
-    Http::fake([
-        'api.github.com/repos/laravel/laravel/contents/composer.json*' => Http::response([
-            'content' => base64_encode(json_encode([
-                'require' => [
-                    'php' => '^8.3',
-                    'laravel/tinker' => '^3.0',
-                ],
-            ])),
-        ]),
+    fakeLaravelSkeleton([
+        'require' => [
+            'php' => '^8.3',
+            'laravel/tinker' => '^3.0',
+        ],
     ]);
 
     $results = (new ComposerAnalyzer([], '13.x'))->analyze();
@@ -130,15 +127,11 @@ it('does not report a dependency when the constraint matches the skeleton', func
         ])
     );
 
-    Http::fake([
-        'api.github.com/repos/laravel/laravel/contents/composer.json*' => Http::response([
-            'content' => base64_encode(json_encode([
-                'require' => [
-                    'php' => '^8.3',
-                    'laravel/tinker' => '^3.0',
-                ],
-            ])),
-        ]),
+    fakeLaravelSkeleton([
+        'require' => [
+            'php' => '^8.3',
+            'laravel/tinker' => '^3.0',
+        ],
     ]);
 
     $results = (new ComposerAnalyzer([], '13.x'))->analyze();
@@ -162,17 +155,13 @@ it('reports a development dependency that needs adjustment', function () {
         ])
     );
 
-    Http::fake([
-        'api.github.com/repos/laravel/laravel/contents/composer.json*' => Http::response([
-            'content' => base64_encode(json_encode([
-                'require' => [
-                    'php' => '^8.3',
-                ],
-                'require-dev' => [
-                    'phpunit/phpunit' => '^12.5.12',
-                ],
-            ])),
-        ]),
+    fakeLaravelSkeleton([
+        'require' => [
+            'php' => '^8.3',
+        ],
+        'require-dev' => [
+            'phpunit/phpunit' => '^12.5.12',
+        ],
     ]);
 
     $results = (new ComposerAnalyzer([], '13.x'))->analyze();
@@ -196,6 +185,12 @@ it('does not report the x-ray package itself', function () {
         ])
     );
 
+    fakeLaravelSkeleton([
+        'require' => [
+            'php' => '^8.3',
+        ],
+    ]);
+
     $results = (new ComposerAnalyzer([], '13.x'))->analyze();
 
     expect($results)
@@ -214,6 +209,12 @@ it('does not report composer semver as a compatibility issue', function () {
             ],
         ])
     );
+
+    fakeLaravelSkeleton([
+        'require' => [
+            'php' => '^8.3',
+        ],
+    ]);
 
     $results = (new ComposerAnalyzer([], '13.x'))->analyze();
 
@@ -235,6 +236,13 @@ it('ignores dev versions from packagist', function () {
     );
 
     Http::fake([
+        'api.github.com/repos/laravel/laravel/contents/composer.json*' => Http::response([
+            'content' => base64_encode(json_encode([
+                'require' => [
+                    'php' => '^8.3',
+                ],
+            ])),
+        ]),
         'packagist.org/packages/example/package.json' => Http::response([
             'package' => [
                 'versions' => [
@@ -268,6 +276,13 @@ it('reports when a package cannot be checked for compatibility', function () {
     );
 
     Http::fake([
+        'api.github.com/repos/laravel/laravel/contents/composer.json*' => Http::response([
+            'content' => base64_encode(json_encode([
+                'require' => [
+                    'php' => '^8.3',
+                ],
+            ])),
+        ]),
         'packagist.org/packages/example/package.json' => Http::response([], 500),
     ]);
 
