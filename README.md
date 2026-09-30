@@ -3,6 +3,7 @@
 [![Latest Version on Packagist](https://img.shields.io/packagist/v/mmstewart/laravel-x-ray.svg?style=flat-square)](https://packagist.org/packages/mmstewart/laravel-x-ray)
 [![Total Downloads](https://img.shields.io/packagist/dt/mmstewart/laravel-x-ray.svg?style=flat-square)](https://packagist.org/packages/mmstewart/laravel-x-ray)
 [![Tests](https://github.com/mmstewart/laravel-x-ray/actions/workflows/run-tests.yml/badge.svg)](https://github.com/mmstewart/laravel-x-ray/actions/workflows/run-tests.yml)
+[![Tests](https://github.com/mmstewart/laravel-x-ray/actions/workflows/run-tests.yml/badge.svg)](https://github.com/mmstewart/laravel-x-ray/actions/workflows/run-tests.yml)
 [![PHP Version](https://img.shields.io/packagist/php-v/mmstewart/laravel-x-ray.svg?style=flat-square)](https://packagist.org/packages/mmstewart/laravel-x-ray)
 
 Laravel X-Ray scans your Laravel application for potential compatibility issues before a Laravel version upgrade.
