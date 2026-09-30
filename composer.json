@@ -1,6 +1,6 @@
 {
     "name": "mmstewart/laravel-x-ray",
-    "description": "This is my package laravel-x-ray",
+    "description": "A Laravel upgrade compatibility scanner that identifies potential issues before upgrading your application.",
     "keywords": [
         "mmstewart",
         "laravel",
