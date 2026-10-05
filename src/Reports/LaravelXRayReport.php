@@ -13,7 +13,11 @@ class LaravelXRayReport
 
     public function display(array $results): void
     {
-        $severityLevels = ['info' => 0, 'warning' => 1, 'error' => 2];
+        $severityLevels = [
+            'info' => 0, 
+            'warning' => 1, 
+            'error' => 2
+        ];
 
         $minimum = config('x-ray.minimum_severity', 'info');
 
@@ -35,10 +39,13 @@ class LaravelXRayReport
         $this->renderSection('WARNINGS', '⚠️ ', $warnings);
         $this->renderSection('INFO', 'ℹ️ ', $info);
 
-        if (collect($results)->isEmpty()) {
-            $this->command->info('✅ No issues found — you are ready to upgrade!');
-            $this->command->line('');
-        }
+        match (true) {
+            $errors->isNotEmpty() => $this->command->error("❌ {$errors->count()} errors require attention before upgrading."),
+            $warnings->isNotEmpty() => $this->command->warn('⚠️  Review the warnings above before upgrading.'),
+            default => $this->command->info('✅ No issues found — you are ready to upgrade!'),
+        };
+
+        $this->command->line('');
 
         $this->command->line(str_repeat('─', 50));
         $this->command->line("{$errors->count()} errors, {$warnings->count()} warnings, {$info->count()} info");
@@ -53,9 +60,7 @@ class LaravelXRayReport
 
         $this->command->line("{$icon} {$title} ({$issues->count()})");
 
-        $issues->each(
-            fn ($issue) => $this->command->line("  • {$issue['message']}")
-        );
+        $issues->each(fn ($issue) => $this->command->line("  • {$issue['message']}"));
 
         $this->command->line('');
     }

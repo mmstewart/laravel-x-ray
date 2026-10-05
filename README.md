@@ -60,21 +60,25 @@ Comparing 11.x → 13.x
 Laravel X-Ray Upgrade Report
 ──────────────────────────────────────────────────
 
-⚠️ WARNINGS (6)
+⚠️ WARNINGS (9)
   • laravel/tinker (^2.9) requires adjustment for Laravel 13.x compatibility. Recommended constraint: ^3.0.
   • spatie/laravel-permission (^5.7) requires adjustment for Laravel 13.x compatibility. Recommended version: ^8.3.0.
   • laravel/pail (^1.1) requires adjustment for Laravel 13.x compatibility. Recommended constraint: ^1.2.5.
   • laravel/pint (^1.13) requires adjustment for Laravel 13.x compatibility. Recommended constraint: ^1.27.
   • nunomaduro/collision (^8.1) requires adjustment for Laravel 13.x compatibility. Recommended constraint: ^8.6.
   • phpunit/phpunit (^11.0.1) requires adjustment for Laravel 13.x compatibility. Recommended constraint: ^12.5.12.
+  • Laravel 13.x changed the daily logging configuration from days to max_files. Review your log retention configuration.
+  • Laravel 13.x changed the Postmark environment variable from POSTMARK_TOKEN to POSTMARK_API_KEY. Update your .env configuration if you use Postmark.
+  • Laravel 13.x changed the Resend environment variable from RESEND_KEY to RESEND_API_KEY. Update your .env configuration if you use Resend.
 
-ℹ️ INFO (10)
-  • Config file config/app.php was modified in the Laravel 13.x skeleton. Review your configuration for changes.
-  • Config file config/auth.php was modified in the Laravel 13.x skeleton. Review your configuration for changes.
-...
+ℹ️ INFO (2)
+  • Laravel 13.x introduced a cache serializable_classes setting. Review your cache configuration if your application stores serialized PHP objects in the cache.
+  • Laravel 13.x introduced a session serialization setting. Review your session configuration if your application stores PHP objects in sessions.
+
+⚠️ Review the warnings above before upgrading.
 
 ──────────────────────────────────────────────────
-0 errors, 6 warnings, 10 info
+0 errors, 9 warnings, 2 info
 ```
 
 ## What It Checks
@@ -112,7 +116,14 @@ Laravel X-Ray compares your `.env.example` against the target Laravel skeleton a
 
 Laravel X-Ray identifies configuration files that have been added, removed, or modified between Laravel versions.
 
-Modified configuration files are flagged for review during the upgrade.
+It can detect:
+
+- Configuration files added by the target Laravel version
+- Configuration files removed by the target Laravel version
+- Known configuration migrations that may require changes to your application
+- Known environment variable changes within Laravel service configuration
+
+X-Ray intentionally does not report every modified configuration file. It focuses on known Laravel changes that provide an actionable upgrade warning or informational finding.
 
 ## Configuration
 

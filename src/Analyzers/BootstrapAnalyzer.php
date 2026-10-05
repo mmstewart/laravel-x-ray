@@ -37,7 +37,7 @@ class BootstrapAnalyzer
             ];
         }
 
-        $patch = $this->skeletonFiles[0]['patch'] ?? '';
+        $patch = $this->getBootstrapPatch();
 
         return collect($this->parseAddedMethods($patch))
             ->reject(fn ($method) => str_contains($userBootstrap, "->{$method}("))
@@ -62,7 +62,12 @@ class BootstrapAnalyzer
 
     private function getMessage(string $method): string
     {
-        return "bootstrap/app.php is missing ->{$method}() configuration.";
+        return match ($method) {
+            'withRouting' => 'bootstrap/app.php is missing ->withRouting(). Laravel uses this to configure application routing.',
+            'withMiddleware' => 'bootstrap/app.php is missing ->withMiddleware(). Laravel uses this to configure middleware configuration.',
+            'withExceptions' => 'bootstrap/app.php is missing ->withExceptions(). Laravel uses this to configure exception handling.',
+            default => "bootstrap/app.php is missing ->{$method}().",
+        };
     }
 
     private function getUserBootstrap(): ?string
@@ -79,5 +84,10 @@ class BootstrapAnalyzer
     private function isLegacyBootstrap(string $content): bool
     {
         return str_contains($content, 'new Illuminate\Foundation\Application(') && ! str_contains($content, 'Application::configure(');
+    }
+
+    private function getBootstrapPatch(): string
+    {
+        return collect($this->skeletonFiles)->firstWhere('filename', 'bootstrap/app.php')['patch'] ?? '';
     }
 }

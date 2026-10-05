@@ -67,7 +67,7 @@ PHP
     expect($results)->toContain([
         'type' => 'bootstrap',
         'severity' => 'warning',
-        'message' => 'bootstrap/app.php is missing ->withRouting() configuration.',
+        'message' => 'bootstrap/app.php is missing ->withRouting(). Laravel uses this to configure application routing.',
         'key' => 'withRouting',
     ]);
 });
@@ -97,7 +97,7 @@ PHP
     expect($results)->toContain([
         'type' => 'bootstrap',
         'severity' => 'warning',
-        'message' => 'bootstrap/app.php is missing ->withMiddleware() configuration.',
+        'message' => 'bootstrap/app.php is missing ->withMiddleware(). Laravel uses this to configure middleware configuration.',
         'key' => 'withMiddleware',
     ]);
 });
@@ -127,7 +127,7 @@ PHP
     expect($results)->toContain([
         'type' => 'bootstrap',
         'severity' => 'warning',
-        'message' => 'bootstrap/app.php is missing ->withExceptions() configuration.',
+        'message' => 'bootstrap/app.php is missing ->withExceptions(). Laravel uses this to configure exception handling.',
         'key' => 'withExceptions',
     ]);
 });

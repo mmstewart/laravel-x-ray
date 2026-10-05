@@ -123,3 +123,21 @@ it('does not crash when the application has no env example file', function () {
         'key' => 'APP_URL',
     ]);
 });
+
+it('ignores removed environment variables', function () {
+    file_put_contents(
+        $this->envExamplePath,
+        "APP_NAME=Laravel\n"
+    );
+
+    $skeletonFiles = [
+        [
+            'filename' => '.env.example',
+            'patch' => "-APP_DEBUG=true\n",
+        ],
+    ];
+
+    $results = (new EnvAnalyzer($skeletonFiles))->analyze();
+
+    expect($results)->toBeEmpty();
+});

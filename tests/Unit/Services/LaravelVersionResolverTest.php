@@ -10,11 +10,9 @@ it('returns the installed laravel version', function () {
 });
 
 it('normalizes an x version into a semver version', function () {
-    expect(LaravelVersionResolver::normalizeVersion('11.x'))
-        ->toBe('11.0.0');
+    expect(LaravelVersionResolver::normalizeVersion('11.x'))->toBe('11.0.0');
 
-    expect(LaravelVersionResolver::normalizeVersion('13.x'))
-        ->toBe('13.0.0');
+    expect(LaravelVersionResolver::normalizeVersion('13.x'))->toBe('13.0.0');
 });
 
 it('returns the current major laravel branch', function () {
