@@ -120,7 +120,7 @@ PATCH,
     expect($results)->toContain([
         'type' => 'config',
         'severity' => 'warning',
-        'message' => "Laravel 13.x changed the Postmark environment variable from POSTMARK_TOKEN to POSTMARK_API_KEY. Update your .env configuration if you use Postmark.",
+        'message' => 'Laravel 13.x changed the Postmark environment variable from POSTMARK_TOKEN to POSTMARK_API_KEY. Update your .env configuration if you use Postmark.',
         'key' => $filename,
     ]);
 });
@@ -144,7 +144,7 @@ PATCH,
     expect($results)->toContain([
         'type' => 'config',
         'severity' => 'warning',
-        'message' => "Laravel 13.x changed the Resend environment variable from RESEND_KEY to RESEND_API_KEY. Update your .env configuration if you use Resend.",
+        'message' => 'Laravel 13.x changed the Resend environment variable from RESEND_KEY to RESEND_API_KEY. Update your .env configuration if you use Resend.',
         'key' => $filename,
     ]);
 });
@@ -168,7 +168,7 @@ PATCH,
     expect($results)->toContain([
         'type' => 'config',
         'severity' => 'warning',
-        'message' => "Laravel 13.x changed the daily logging configuration from days to max_files. Review your log retention configuration.",
+        'message' => 'Laravel 13.x changed the daily logging configuration from days to max_files. Review your log retention configuration.',
         'key' => $filename,
     ]);
 });

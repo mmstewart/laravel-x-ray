@@ -3,6 +3,7 @@
 namespace Mmstewart\LaravelXRay\Analyzers;
 
 use Composer\Semver\Semver;
+use Composer\Semver\VersionParser;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Mmstewart\LaravelXRay\Services\GithubClient;
@@ -39,7 +40,7 @@ class ComposerAnalyzer
             [
                 'type' => 'composer',
                 'severity' => 'error',
-                'message' => "PHP {$requiredPhp} required but you are running " . PHP_VERSION,
+                'message' => "PHP {$requiredPhp} required but you are running ".PHP_VERSION,
                 'key' => 'php',
             ],
         ];
@@ -137,7 +138,7 @@ class ComposerAnalyzer
     private function constraintsCompatible(string $installed, string $recommended): bool
     {
         try {
-            $parser = new \Composer\Semver\VersionParser;
+            $parser = new VersionParser;
 
             $installedConstraint = $parser->parseConstraints($installed);
             $recommendedConstraint = $parser->parseConstraints($recommended);

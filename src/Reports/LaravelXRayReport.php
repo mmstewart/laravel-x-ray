@@ -14,9 +14,9 @@ class LaravelXRayReport
     public function display(array $results): void
     {
         $severityLevels = [
-            'info' => 0, 
-            'warning' => 1, 
-            'error' => 2
+            'info' => 0,
+            'warning' => 1,
+            'error' => 2,
         ];
 
         $minimum = config('x-ray.minimum_severity', 'info');
