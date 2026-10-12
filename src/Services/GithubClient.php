@@ -9,12 +9,16 @@ class GithubClient
 {
     public function compare(string $repository, string $from, string $to): Response
     {
-        return Http::withHeaders($this->headers())->get("https://api.github.com/repos/{$repository}/compare/{$from}...{$to}");
+        return Http::withHeaders($this->headers())
+            ->timeout(10)
+            ->get("https://api.github.com/repos/{$repository}/compare/{$from}...{$to}");
     }
 
     public function repository(string $repository): Response
     {
-        return Http::withHeaders($this->headers())->get("https://api.github.com/repos/{$repository}");
+        return Http::withHeaders($this->headers())
+            ->timeout(10)
+            ->get("https://api.github.com/repos/{$repository}");
     }
 
     private function headers(): array

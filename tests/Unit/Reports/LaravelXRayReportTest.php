@@ -102,3 +102,39 @@ it('filters issues below the minimum severity', function () {
         ],
     ]);
 });
+
+it('groups issues by type', function () {
+    $output = [];
+
+    $command = reportCommand();
+
+    $command->shouldReceive('line')
+        ->andReturnUsing(function ($line) use (&$output) {
+            $output[] = $line;
+        });
+
+    $command->shouldReceive('warn')
+        ->once();
+
+    $report = new LaravelXRayReport($command);
+
+    $report->display([
+        [
+            'type' => 'composer',
+            'severity' => 'warning',
+            'message' => 'Package requires adjustment.',
+            'key' => 'package',
+        ],
+        [
+            'type' => 'config',
+            'severity' => 'warning',
+            'message' => 'Configuration changed.',
+            'key' => 'config/app.php',
+        ],
+    ]);
+
+    expect($output)->toContain('  DEPENDENCY CHANGES')
+        ->and($output)->toContain('  CONFIGURATION CHANGES')
+        ->and($output)->toContain('    • Package requires adjustment.')
+        ->and($output)->toContain('    • Configuration changed.');
+});

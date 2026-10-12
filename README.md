@@ -34,13 +34,17 @@ composer require mmstewart/laravel-x-ray
 
 X-Ray accepts optional `from` and `to` arguments to specify the Laravel versions you want to compare.
 
-To explicitly compare your current Laravel version against a target version:
+### Compare specific Laravel versions
 
 ```bash
 php artisan laravel-x-ray 11.x 13.x
 ```
 
-The first argument (`11.x`) is the Laravel version your application is currently using, and the second argument (`13.x`) is the version you are planning to upgrade to.
+The first argument (`11.x`) is the source Laravel version, and the second argument (`13.x`) is the target version you plan to upgrade to.
+
+Version arguments accept either lowercase or uppercase `x`. For example, `11.x` and `11.X` are both valid.
+
+### Automatic version detection
 
 If you omit the arguments, X-Ray determines the source branch from your installed Laravel version and uses Laravel's default GitHub repository branch as the target:
 
@@ -48,9 +52,20 @@ If you omit the arguments, X-Ray determines the source branch from your installe
 php artisan laravel-x-ray
 ```
 
-You can use explicit versions when planning a specific upgrade, or run X-Ray without arguments when you want it to use the default branch configuration.
+### Version validation
 
-Example output:
+X-Ray validates the supplied version arguments before performing the comparison.
+
+- **Valid formats:** `11.x`, `12.x`, `13.x`, `11.X`, `12.X`, and `13.X`.
+- **Invalid formats:** `11x`, `12`, and `13x`.
+- **Downgrade attempts:** A target version lower than the source version is rejected.
+- **Same version:** If the source and target versions are identical, X-Ray reports that no newer Laravel skeleton branch is available.
+
+### Example output
+
+> **Note:** X-Ray identifies potential upgrade issues by comparing Laravel skeleton changes and dependency requirements. Review the findings in the context of your application; the report does not guarantee that an upgrade will succeed without additional changes.
+
+Running `php artisan laravel-x-ray 11.x 13.x` produces a report similar to the following:
 
 ```text
 Laravel 11.56.1
@@ -60,26 +75,34 @@ Comparing 11.x → 13.x
 Laravel X-Ray Upgrade Report
 ──────────────────────────────────────────────────
 
-⚠️ WARNINGS (9)
-  • laravel/tinker (^2.9) requires adjustment for Laravel 13.x compatibility. Recommended constraint: ^3.0.
-  • spatie/laravel-permission (^5.7) requires adjustment for Laravel 13.x compatibility. Recommended version: ^8.3.0.
-  • laravel/pail (^1.1) requires adjustment for Laravel 13.x compatibility. Recommended constraint: ^1.2.5.
-  • laravel/pint (^1.13) requires adjustment for Laravel 13.x compatibility. Recommended constraint: ^1.27.
-  • nunomaduro/collision (^8.1) requires adjustment for Laravel 13.x compatibility. Recommended constraint: ^8.6.
-  • phpunit/phpunit (^11.0.1) requires adjustment for Laravel 13.x compatibility. Recommended constraint: ^12.5.12.
-  • Laravel 13.x changed the daily logging configuration from days to max_files. Review your log retention configuration.
-  • Laravel 13.x changed the Postmark environment variable from POSTMARK_TOKEN to POSTMARK_API_KEY. Update your .env configuration if you use Postmark.
-  • Laravel 13.x changed the Resend environment variable from RESEND_KEY to RESEND_API_KEY. Update your .env configuration if you use Resend.
+⚠️ CHANGES TO REVIEW
 
-ℹ️ INFO (2)
-  • Laravel 13.x introduced a cache serializable_classes setting. Review your cache configuration if your application stores serialized PHP objects in the cache.
-  • Laravel 13.x introduced a session serialization setting. Review your session configuration if your application stores PHP objects in sessions.
+  DEPENDENCY CHANGES
+    • laravel/tinker (^2.9) is not compatible with Laravel 13.x. Recommended constraint: ^3.0.
+    • spatie/laravel-permission (^5.7) is not compatible with Laravel 13.x. Recommended constraint: ^8.3.
+    • laravel/pail (^1.1) is not compatible with Laravel 13.x. Recommended constraint: ^1.2.5.
+    • laravel/pint (^1.13) is not compatible with Laravel 13.x. Recommended constraint: ^1.27.
+    • nunomaduro/collision (^8.1) is not compatible with Laravel 13.x. Recommended constraint: ^8.6.
+    • phpunit/phpunit (^11.0.1) is not compatible with Laravel 13.x. Recommended constraint: ^12.5.12.
+
+  CONFIGURATION CHANGES
+    • Laravel 13.x changed the daily logging configuration from days to max_files. Review your log retention configuration.
+    • Laravel 13.x changed the Postmark environment variable from POSTMARK_TOKEN to POSTMARK_API_KEY. Update your .env configuration if you use Postmark.
+    • Laravel 13.x changed the Resend environment variable from RESEND_KEY to RESEND_API_KEY. Update your .env configuration if you use Resend.
+
+ℹ️ OPTIONAL REVIEW
+
+  CONFIGURATION CHANGES
+    • Laravel 13.x introduced a cache serializable_classes setting. Review your cache configuration if your application stores serialized PHP objects in the cache.
+    • Laravel 13.x introduced a session serialization setting. Review your session configuration if your application stores PHP objects in sessions.
 
 ⚠️ Review the warnings above before upgrading.
 
 ──────────────────────────────────────────────────
 0 errors, 9 warnings, 2 info
 ```
+
+Use explicit versions when planning a specific upgrade, or omit the arguments to let X-Ray detect the versions automatically.
 
 ## What It Checks
 

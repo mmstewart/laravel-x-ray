@@ -22,12 +22,11 @@ class LaravelXRayReport
         $minimum = config('x-ray.minimum_severity', 'info');
 
         $results = collect($results)
-            ->filter(fn ($issue) => isset($severityLevels[$issue['severity']]) && $severityLevels[$issue['severity']] >= $severityLevels[$minimum])
-            ->toArray();
+            ->filter(fn ($issue) => isset($severityLevels[$issue['severity']]) && $severityLevels[$issue['severity']] >= $severityLevels[$minimum]);
 
-        $errors = collect($results)->where('severity', 'error');
-        $warnings = collect($results)->where('severity', 'warning');
-        $info = collect($results)->where('severity', 'info');
+        $errors = $results->where('severity', 'error');
+        $warnings = $results->where('severity', 'warning');
+        $info = $results->where('severity', 'info');
 
         $this->command->line('');
         $this->command->line(str_repeat('─', 50));
@@ -35,9 +34,9 @@ class LaravelXRayReport
         $this->command->line(str_repeat('─', 50));
         $this->command->line('');
 
-        $this->renderSection('ERRORS', '❌', $errors);
-        $this->renderSection('WARNINGS', '⚠️ ', $warnings);
-        $this->renderSection('INFO', 'ℹ️ ', $info);
+        $this->renderSection('❌ REQUIRED ACTION', $errors);
+        $this->renderSection('⚠️  CHANGES TO REVIEW', $warnings);
+        $this->renderSection('ℹ️  OPTIONAL REVIEW', $info);
 
         match (true) {
             $errors->isNotEmpty() => $this->command->error("❌ {$errors->count()} errors require attention before upgrading."),
@@ -52,16 +51,34 @@ class LaravelXRayReport
         $this->command->line('');
     }
 
-    private function renderSection(string $title, string $icon, Collection $issues): void
+    private function renderSection(string $title, Collection $issues): void
     {
         if ($issues->isEmpty()) {
             return;
         }
 
-        $this->command->line("{$icon} {$title} ({$issues->count()})");
+        $this->command->line($title);
 
-        $issues->each(fn ($issue) => $this->command->line("  • {$issue['message']}"));
+        foreach ($issues->groupBy('type') as $type => $group) {
+            $this->command->line('');
+            $this->command->line('  '.$this->typeLabel($type));
+
+            foreach ($group as $issue) {
+                $this->command->line("    • {$issue['message']}");
+            }
+        }
 
         $this->command->line('');
+    }
+
+    private function typeLabel(string $type): string
+    {
+        return match ($type) {
+            'composer' => 'DEPENDENCY CHANGES',
+            'config' => 'CONFIGURATION CHANGES',
+            'env' => 'ENVIRONMENT CHANGES',
+            'bootstrap' => 'BOOTSTRAP CHANGES',
+            default => 'OTHER CHANGES',
+        };
     }
 }

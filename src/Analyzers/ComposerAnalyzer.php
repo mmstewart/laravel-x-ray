@@ -39,7 +39,7 @@ class ComposerAnalyzer
             [
                 'type' => 'composer',
                 'severity' => 'error',
-                'message' => "PHP {$requiredPhp} required but you are running ".PHP_VERSION,
+                'message' => "PHP {$requiredPhp} required but you are running " . PHP_VERSION,
                 'key' => 'php',
             ],
         ];
@@ -54,11 +54,7 @@ class ComposerAnalyzer
         }
 
         foreach (explode("\n", $composer['patch'] ?? '') as $line) {
-            if (
-                str_starts_with($line, '+')
-                && ! str_starts_with($line, '+++')
-                && preg_match('/"php":\s*"([^"]+)"/', $line, $matches)
-            ) {
+            if (str_starts_with($line, '+') && ! str_starts_with($line, '+++') && preg_match('/"php":\s*"([^"]+)"/', $line, $matches)) {
                 return $matches[1];
             }
         }
@@ -102,14 +98,14 @@ class ComposerAnalyzer
         if (isset($skeletonComposer['require'][$package])) {
             $recommended = $skeletonComposer['require'][$package];
 
-            if ($installedConstraint === $recommended) {
+            if ($this->constraintsCompatible($installedConstraint, $recommended)) {
                 return null;
             }
 
             return [
                 'type' => 'composer',
                 'severity' => 'warning',
-                'message' => "{$package} ({$installedConstraint}) requires adjustment for Laravel {$this->targetVersion} compatibility. Recommended constraint: {$recommended}.",
+                'message' => "{$package} ({$installedConstraint}) is not compatible with Laravel {$this->targetVersion}. Recommended constraint: {$recommended}.",
                 'key' => $package,
             ];
         }
@@ -133,14 +129,41 @@ class ComposerAnalyzer
         return [
             'type' => 'composer',
             'severity' => 'warning',
-            'message' => "{$package} ({$installedConstraint}) requires adjustment for Laravel {$this->targetVersion} compatibility. Recommended version: {$this->recommendedConstraint($recommended)}.",
+            'message' => "{$package} ({$installedConstraint}) is not compatible with Laravel {$this->targetVersion}. Recommended constraint: {$this->recommendedConstraint($recommended)}.",
             'key' => $package,
         ];
     }
 
+    private function constraintsCompatible(string $installed, string $recommended): bool
+    {
+        try {
+            $parser = new \Composer\Semver\VersionParser;
+
+            $installedConstraint = $parser->parseConstraints($installed);
+            $recommendedConstraint = $parser->parseConstraints($recommended);
+
+            $installedLower = $installedConstraint->getLowerBound();
+            $installedUpper = $installedConstraint->getUpperBound();
+
+            $recommendedLower = $recommendedConstraint->getLowerBound();
+            $recommendedUpper = $recommendedConstraint->getUpperBound();
+
+            return $this->compareBounds($installedLower, $recommendedLower) >= 0 && $this->compareBounds($installedUpper, $recommendedUpper) <= 0;
+        } catch (\Throwable $e) {
+            return false;
+        }
+    }
+
+    private function compareBounds($first, $second): int
+    {
+        return version_compare($first->getVersion(), $second->getVersion());
+    }
+
     private function recommendedConstraint(string $version): string
     {
-        return '^'.ltrim($version, 'v');
+        $version = ltrim($version, 'v');
+
+        return '^'.preg_replace('/\.\d+$/', '', $version);
     }
 
     private function checkDevDependencyVersions(): array
@@ -155,7 +178,7 @@ class ComposerAnalyzer
             ->map(fn ($constraint, $package) => [
                 'type' => 'composer',
                 'severity' => 'warning',
-                'message' => "{$package} ({$userDevDeps[$package]}) requires adjustment for Laravel {$this->targetVersion} compatibility. Recommended constraint: {$constraint}.",
+                'message' => "{$package} ({$userDevDeps[$package]}) is not compatible with Laravel {$this->targetVersion}. Recommended constraint: {$constraint}.",
                 'key' => $package,
             ])
             ->values()
@@ -231,7 +254,9 @@ class ComposerAnalyzer
     {
         $response = Http::withHeaders([
             'Accept' => 'application/json',
-        ])->get("https://packagist.org/packages/{$package}.json");
+        ])
+            ->timeout(10)
+            ->get("https://packagist.org/packages/{$package}.json");
 
         if (! $response->successful()) {
             return null;
@@ -249,8 +274,10 @@ class ComposerAnalyzer
             return null;
         }
 
+        $compatibleVersions = [];
+
         foreach ($versions as $version => $details) {
-            if (str_contains($version, '-dev')) {
+            if (str_contains($version, '-')) {
                 continue;
             }
 
@@ -263,11 +290,17 @@ class ComposerAnalyzer
             }
 
             if ($this->satisfiesConstraint(LaravelVersionResolver::normalizeVersion($targetLaravel), $laravelConstraint)) {
-                return $version;
+                $compatibleVersions[] = ltrim($version, 'v');
             }
         }
 
-        return null;
+        if (empty($compatibleVersions)) {
+            return null;
+        }
+
+        $compatibleVersions = Semver::sort($compatibleVersions);
+
+        return end($compatibleVersions);
     }
 
     private function getLaravelConstraint(array $requires): ?string

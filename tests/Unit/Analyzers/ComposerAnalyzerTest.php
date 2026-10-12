@@ -111,7 +111,7 @@ it('reports a dependency constraint that differs from the skeleton', function ()
     expect($results)->toContain([
         'type' => 'composer',
         'severity' => 'warning',
-        'message' => 'laravel/tinker (^2.9) requires adjustment for Laravel 13.x compatibility. Recommended constraint: ^3.0.',
+        'message' => 'laravel/tinker (^2.9) is not compatible with Laravel 13.x. Recommended constraint: ^3.0.',
         'key' => 'laravel/tinker',
     ]);
 });
@@ -142,6 +142,29 @@ it('does not report a dependency when the constraint matches the skeleton', func
         );
 });
 
+it('does not report a dependency when its constraint is compatible with the skeleton', function () {
+    file_put_contents(
+        base_path('composer.json'),
+        json_encode([
+            'require' => [
+                'php' => '^8.3',
+                'laravel/tinker' => '^3.1',
+            ],
+        ])
+    );
+
+    fakeLaravelSkeleton([
+        'require' => [
+            'php' => '^8.3',
+            'laravel/tinker' => '^3.0',
+        ],
+    ]);
+
+    $results = (new ComposerAnalyzer([], '13.x'))->analyze();
+
+    expect(collect($results)->firstWhere('key', 'laravel/tinker'))->toBeNull();
+});
+
 it('reports a development dependency that needs adjustment', function () {
     file_put_contents(
         base_path('composer.json'),
@@ -169,7 +192,7 @@ it('reports a development dependency that needs adjustment', function () {
     expect($results)->toContain([
         'type' => 'composer',
         'severity' => 'warning',
-        'message' => 'phpunit/phpunit (^11.0.1) requires adjustment for Laravel 13.x compatibility. Recommended constraint: ^12.5.12.',
+        'message' => 'phpunit/phpunit (^11.0.1) is not compatible with Laravel 13.x. Recommended constraint: ^12.5.12.',
         'key' => 'phpunit/phpunit',
     ]);
 });
@@ -305,4 +328,202 @@ it('fails when the laravel skeleton cannot be fetched from github', function () 
 
     expect(fn () => (new ComposerAnalyzer([], '13.x'))->analyze())
         ->toThrow(RuntimeException::class);
+});
+
+it('reports a dependency when its constraint is broader than the skeleton', function () {
+    file_put_contents(
+        base_path('composer.json'),
+        json_encode([
+            'require' => [
+                'php' => '^8.3',
+                'laravel/tinker' => '^3.0',
+            ],
+        ])
+    );
+
+    fakeLaravelSkeleton([
+        'require' => [
+            'php' => '^8.3',
+            'laravel/tinker' => '^3.1',
+        ],
+    ]);
+
+    $results = (new ComposerAnalyzer([], '13.x'))->analyze();
+
+    expect(collect($results)->firstWhere('key', 'laravel/tinker'))
+        ->not->toBeNull();
+});
+
+it('recommends the highest compatible stable package version', function () {
+    file_put_contents(
+        base_path('composer.json'),
+        json_encode([
+            'require' => [
+                'php' => '^8.3',
+                'example/package' => '^1.0',
+            ],
+        ])
+    );
+
+    Http::fake([
+        'api.github.com/repos/laravel/laravel/contents/composer.json*' => Http::response([
+            'content' => base64_encode(json_encode([
+                'require' => [
+                    'php' => '^8.3',
+                ],
+            ])),
+        ]),
+        'packagist.org/packages/example/package.json' => Http::response([
+            'package' => [
+                'versions' => [
+                    '8.4.0' => [
+                        'require' => [
+                            'laravel/framework' => '^13.0',
+                        ],
+                    ],
+                    '8.3.1' => [
+                        'require' => [
+                            'laravel/framework' => '^13.0',
+                        ],
+                    ],
+                    '8.3.0' => [
+                        'require' => [
+                            'laravel/framework' => '^13.0',
+                        ],
+                    ],
+                    '8.2.0' => [
+                        'require' => [
+                            'laravel/framework' => '^12.0',
+                        ],
+                    ],
+                ],
+            ],
+        ]),
+    ]);
+
+    $results = (new ComposerAnalyzer([], '13.x'))->analyze();
+
+    expect($results)->toContain([
+        'type' => 'composer',
+        'severity' => 'warning',
+        'message' => 'example/package (^1.0) is not compatible with Laravel 13.x. Recommended constraint: ^8.4.',
+        'key' => 'example/package',
+    ]);
+});
+
+it('does not report a third-party dependency when the installed constraint allows the recommended version', function () {
+    file_put_contents(
+        base_path('composer.json'),
+        json_encode([
+            'require' => [
+                'php' => '^8.3',
+                'example/package' => '^8.3',
+            ],
+        ])
+    );
+
+    Http::fake([
+        'api.github.com/repos/laravel/laravel/contents/composer.json*' => Http::response([
+            'content' => base64_encode(json_encode([
+                'require' => [
+                    'php' => '^8.3',
+                ],
+            ])),
+        ]),
+        'packagist.org/packages/example/package.json' => Http::response([
+            'package' => [
+                'versions' => [
+                    '8.4.0' => [
+                        'require' => [
+                            'laravel/framework' => '^13.0',
+                        ],
+                    ],
+                    '8.3.0' => [
+                        'require' => [
+                            'laravel/framework' => '^13.0',
+                        ],
+                    ],
+                ],
+            ],
+        ]),
+    ]);
+
+    $results = (new ComposerAnalyzer([], '13.x'))->analyze();
+
+    expect(collect($results)->firstWhere('key', 'example/package'))
+        ->toBeNull();
+});
+
+it('reports an info message when a third-party dependency has no Laravel requirement', function () {
+    file_put_contents(
+        base_path('composer.json'),
+        json_encode([
+            'require' => [
+                'php' => '^8.3',
+                'example/package' => '^1.0',
+            ],
+        ])
+    );
+
+    Http::fake([
+        'api.github.com/repos/laravel/laravel/contents/composer.json*' => Http::response([
+            'content' => base64_encode(json_encode([
+                'require' => [
+                    'php' => '^8.3',
+                ],
+            ])),
+        ]),
+        'packagist.org/packages/example/package.json' => Http::response([
+            'package' => [
+                'versions' => [
+                    '1.2.0' => [
+                        'require' => [
+                            'php' => '^8.3',
+                        ],
+                    ],
+                ],
+            ],
+        ]),
+    ]);
+
+    $results = (new ComposerAnalyzer([], '13.x'))->analyze();
+
+    expect($results)->toContain([
+        'type' => 'composer',
+        'severity' => 'info',
+        'message' => 'example/package could not be checked for Laravel 13.x compatibility.',
+        'key' => 'example/package',
+    ]);
+});
+
+it('reports an info message when a third-party dependency cannot be checked', function () {
+    file_put_contents(
+        base_path('composer.json'),
+        json_encode([
+            'require' => [
+                'php' => '^8.3',
+                'example/package' => '^1.0',
+            ],
+        ])
+    );
+
+    Http::fake([
+        'api.github.com/repos/laravel/laravel/contents/composer.json*' => Http::response([
+            'content' => base64_encode(json_encode([
+                'require' => [
+                    'php' => '^8.3',
+                ],
+            ])),
+        ]),
+        'packagist.org/packages/example/package.json' => Http::response([], 500),
+    ]);
+
+    $results = (new ComposerAnalyzer([], '13.x'))->analyze();
+
+    expect($results)->toContain([
+        'type' => 'composer',
+        'severity' => 'info',
+        'message' => 'example/package could not be checked for Laravel 13.x compatibility.',
+        'key' => 'example/package',
+    ]);
 });

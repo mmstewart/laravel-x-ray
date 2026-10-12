@@ -2,6 +2,29 @@
 
 All notable changes to `laravel-x-ray` will be documented in this file.
 
+## Laravel X-Ray v1.2.0 🎉 - 2026-10-12
+
+### Improvements
+
+- Improve dependency compatibility analysis for Laravel upgrades.
+- Improve CLI output and make compatibility findings easier to understand.
+- Add clearer validation for Laravel version arguments.
+- Normalize Laravel version branch names to lowercase before making GitHub requests.
+- Add HTTP request timeouts to GitHub and Packagist requests.
+
+### Fixes
+
+- Reject invalid Laravel version argument formats.
+- Prevent downgrade comparisons when the target Laravel major version is lower than the source version.
+- Report when no newer Laravel skeleton branch is available if the source and target versions are identical.
+
+### Testing
+
+- Add tests for Laravel version argument validation.
+- Add tests for uppercase and lowercase version suffixes.
+- Add tests for downgrade prevention and identical version comparisons.
+- Verify existing analysis and reporting behavior.
+
 ## Laravel X-Ray v1.1.0 🎉 - 2026-10-05
 
 ### Improvements

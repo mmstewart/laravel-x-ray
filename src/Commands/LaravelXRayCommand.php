@@ -70,11 +70,21 @@ class LaravelXRayCommand extends Command
      */
     private function isValidUpgrade(string $from, string $to): bool
     {
-        $fromVersion = LaravelVersionResolver::normalizeVersion($from);
+        if (! preg_match('/^\d+\.x$/i', $from)) {
+            $this->error("Invalid Laravel version: {$from}");
+            $this->line('Use a Laravel version in the format 11.x, 12.x, or 13.x.');
 
-        $toVersion = LaravelVersionResolver::normalizeVersion($to);
+            return false;
+        }
 
-        if (version_compare($fromVersion, $toVersion, '>')) {
+        if (! preg_match('/^\d+\.x$/i', $to)) {
+            $this->error("Invalid Laravel version: {$to}");
+            $this->line('Use a Laravel version in the format 11.x, 12.x, or 13.x.');
+
+            return false;
+        }
+
+        if ((int) $to < (int) $from) {
             $this->error("Invalid upgrade path: {$from} → {$to}");
 
             return false;
@@ -94,7 +104,7 @@ class LaravelXRayCommand extends Command
 
         $to = $this->argument('to') ?? $context->targetBranch;
 
-        return [$from, $to];
+        return [strtolower($from), strtolower($to)];
     }
 
     /**
