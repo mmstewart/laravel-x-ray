@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use Mmstewart\LaravelXRay\Analyzers\ComposerAnalyzer;
 
@@ -754,7 +755,7 @@ it('handles Packagist connection failures', function () {
                 ],
             ])),
         ]),
-        'packagist.org/packages/example/package.json' => fn () => throw new \Illuminate\Http\Client\ConnectionException(
+        'packagist.org/packages/example/package.json' => fn () => throw new ConnectionException(
             'Connection failed.'
         ),
     ]);

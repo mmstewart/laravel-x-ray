@@ -5,6 +5,7 @@ namespace Mmstewart\LaravelXRay\Analyzers;
 use Composer\Semver\Intervals;
 use Composer\Semver\Semver;
 use Composer\Semver\VersionParser;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Mmstewart\LaravelXRay\Services\GithubClient;
@@ -256,7 +257,7 @@ class ComposerAnalyzer
             ])
                 ->timeout(10)
                 ->get("https://packagist.org/packages/{$package}.json");
-        } catch (\Illuminate\Http\Client\ConnectionException $e) {
+        } catch (ConnectionException $e) {
             return null;
         }
 
