@@ -2,6 +2,20 @@
 
 All notable changes to `laravel-x-ray` will be documented in this file.
 
+## Laravel X-Ray v1.3.0 🎉 - 2026-10-14
+
+### Improved
+
+- Improved Composer package compatibility checks by evaluating all Laravel-related dependency constraints.
+- Improved recommended package version selection to choose the highest compatible stable release.
+- Improved handling of Composer version constraints when checking upgrade compatibility.
+
+### Fixed
+
+- Handle GitHub skeleton retrieval failures and invalid composer.json responses.
+- Handle Packagist API errors, missing version data, and connection failures gracefully.
+- Exclude prerelease package versions from compatibility recommendations.
+
 ## Laravel X-Ray v1.2.0 🎉 - 2026-10-12
 
 ### Improvements

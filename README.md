@@ -118,6 +118,10 @@ It can identify:
 - Third-party packages with Laravel compatibility requirements
 - Dependencies that may require a version change
 
+When a package is incompatible, X-Ray checks its published version requirements and recommends the highest compatible stable version it finds for the target Laravel version.
+
+Recommendations are based on declared Composer constraints and do not guarantee that a package will work with every application.
+
 ### Bootstrap configuration
 
 Laravel X-Ray compares your `bootstrap/app.php` against the target Laravel application structure.

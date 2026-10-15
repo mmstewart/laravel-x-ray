@@ -2,6 +2,7 @@
 
 namespace Mmstewart\LaravelXRay\Analyzers;
 
+use Composer\Semver\Intervals;
 use Composer\Semver\Semver;
 use Composer\Semver\VersionParser;
 use Illuminate\Support\Facades\Cache;
@@ -140,24 +141,10 @@ class ComposerAnalyzer
         try {
             $parser = new VersionParser;
 
-            $installedConstraint = $parser->parseConstraints($installed);
-            $recommendedConstraint = $parser->parseConstraints($recommended);
-
-            $installedLower = $installedConstraint->getLowerBound();
-            $installedUpper = $installedConstraint->getUpperBound();
-
-            $recommendedLower = $recommendedConstraint->getLowerBound();
-            $recommendedUpper = $recommendedConstraint->getUpperBound();
-
-            return $this->compareBounds($installedLower, $recommendedLower) >= 0 && $this->compareBounds($installedUpper, $recommendedUpper) <= 0;
+            return Intervals::isSubsetOf($parser->parseConstraints($installed), $parser->parseConstraints($recommended));
         } catch (\Throwable $e) {
             return false;
         }
-    }
-
-    private function compareBounds($first, $second): int
-    {
-        return version_compare($first->getVersion(), $second->getVersion());
     }
 
     private function recommendedConstraint(string $version): string
@@ -227,9 +214,19 @@ class ComposerAnalyzer
             throw new \RuntimeException("Unable to fetch Laravel {$this->targetVersion} skeleton from GitHub.");
         }
 
-        $content = base64_decode($response->json('content', ''));
+        $content = base64_decode($response->json('content', ''), true);
 
-        return json_decode($content, true);
+        if ($content === false) {
+            throw new \RuntimeException("Invalid composer.json content returned by GitHub for Laravel {$this->targetVersion}.");
+        }
+
+        $composer = json_decode($content, true);
+
+        if (! is_array($composer)) {
+            throw new \RuntimeException("Invalid composer.json returned by GitHub for Laravel {$this->targetVersion}.");
+        }
+
+        return $composer;
     }
 
     // Only check production dependencies, not dev
@@ -253,20 +250,26 @@ class ComposerAnalyzer
 
     private function fetchPackagistVersions(string $package): ?array
     {
-        $response = Http::withHeaders([
-            'Accept' => 'application/json',
-        ])
-            ->timeout(10)
-            ->get("https://packagist.org/packages/{$package}.json");
+        try {
+            $response = Http::withHeaders([
+                'Accept' => 'application/json',
+            ])
+                ->timeout(10)
+                ->get("https://packagist.org/packages/{$package}.json");
+        } catch (\Illuminate\Http\Client\ConnectionException $e) {
+            return null;
+        }
 
         if (! $response->successful()) {
             return null;
         }
 
-        return $response->json('package.versions', []);
+        $versions = $response->json('package.versions');
+
+        return is_array($versions) ? $versions : null;
     }
 
-    // Returns true = compatible, false = incompatible, null = unknown
+    // Returns the highest compatible stable version, or null if unknown.
     private function findCompatibleVersion(string $package, string $targetLaravel): ?string
     {
         $versions = $this->getPackagistVersions($package);
@@ -276,6 +279,7 @@ class ComposerAnalyzer
         }
 
         $compatibleVersions = [];
+        $targetVersion = LaravelVersionResolver::normalizeVersion($targetLaravel);
 
         foreach ($versions as $version => $details) {
             if (str_contains($version, '-')) {
@@ -284,13 +288,19 @@ class ComposerAnalyzer
 
             $requires = $details['require'] ?? [];
 
-            $laravelConstraint = $this->getLaravelConstraint($requires);
+            $laravelConstraints = array_filter(
+                $requires,
+                fn ($package) => $package === 'laravel/framework' || str_starts_with($package, 'illuminate/'),
+                ARRAY_FILTER_USE_KEY
+            );
 
-            if (! $laravelConstraint) {
+            if (empty($laravelConstraints)) {
                 continue;
             }
 
-            if ($this->satisfiesConstraint(LaravelVersionResolver::normalizeVersion($targetLaravel), $laravelConstraint)) {
+            $compatible = collect($laravelConstraints)->every(fn ($constraint) => $this->satisfiesConstraint($targetVersion, $constraint));
+
+            if ($compatible) {
                 $compatibleVersions[] = ltrim($version, 'v');
             }
         }
@@ -302,16 +312,5 @@ class ComposerAnalyzer
         $compatibleVersions = Semver::sort($compatibleVersions);
 
         return end($compatibleVersions);
-    }
-
-    private function getLaravelConstraint(array $requires): ?string
-    {
-        foreach ($requires as $package => $constraint) {
-            if ($package === 'laravel/framework' || str_starts_with($package, 'illuminate/')) {
-                return $constraint;
-            }
-        }
-
-        return null;
     }
 }

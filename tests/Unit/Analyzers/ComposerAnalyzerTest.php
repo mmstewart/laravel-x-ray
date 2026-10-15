@@ -1,6 +1,5 @@
 <?php
 
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Mmstewart\LaravelXRay\Analyzers\ComposerAnalyzer;
 
@@ -320,14 +319,11 @@ it('reports when a package cannot be checked for compatibility', function () {
 });
 
 it('fails when the laravel skeleton cannot be fetched from github', function () {
-    Cache::forget('xray:skeleton:composer:13.x');
-
     Http::fake([
         'api.github.com/repos/laravel/laravel/contents/composer.json*' => Http::response([], 500),
     ]);
 
-    expect(fn () => (new ComposerAnalyzer([], '13.x'))->analyze())
-        ->toThrow(RuntimeException::class);
+    expect(fn () => (new ComposerAnalyzer([], '13.x'))->analyze())->toThrow(RuntimeException::class);
 });
 
 it('reports a dependency when its constraint is broader than the skeleton', function () {
@@ -350,8 +346,7 @@ it('reports a dependency when its constraint is broader than the skeleton', func
 
     $results = (new ComposerAnalyzer([], '13.x'))->analyze();
 
-    expect(collect($results)->firstWhere('key', 'laravel/tinker'))
-        ->not->toBeNull();
+    expect(collect($results)->firstWhere('key', 'laravel/tinker'))->not->toBeNull();
 });
 
 it('recommends the highest compatible stable package version', function () {
@@ -376,17 +371,22 @@ it('recommends the highest compatible stable package version', function () {
         'packagist.org/packages/example/package.json' => Http::response([
             'package' => [
                 'versions' => [
+                    '8.3.0' => [
+                        'require' => [
+                            'laravel/framework' => '^13.0',
+                        ],
+                    ],
+                    '8.5.0-beta.1' => [
+                        'require' => [
+                            'laravel/framework' => '^13.0',
+                        ],
+                    ],
                     '8.4.0' => [
                         'require' => [
                             'laravel/framework' => '^13.0',
                         ],
                     ],
                     '8.3.1' => [
-                        'require' => [
-                            'laravel/framework' => '^13.0',
-                        ],
-                    ],
-                    '8.3.0' => [
                         'require' => [
                             'laravel/framework' => '^13.0',
                         ],
@@ -450,8 +450,7 @@ it('does not report a third-party dependency when the installed constraint allow
 
     $results = (new ComposerAnalyzer([], '13.x'))->analyze();
 
-    expect(collect($results)->firstWhere('key', 'example/package'))
-        ->toBeNull();
+    expect(collect($results)->firstWhere('key', 'example/package'))->toBeNull();
 });
 
 it('reports an info message when a third-party dependency has no Laravel requirement', function () {
@@ -526,4 +525,244 @@ it('reports an info message when a third-party dependency cannot be checked', fu
         'message' => 'example/package could not be checked for Laravel 13.x compatibility.',
         'key' => 'example/package',
     ]);
+});
+
+it('checks all Laravel-related requirements before recommending a package version', function () {
+    config(['x-ray.cache.enabled' => false]);
+
+    file_put_contents(
+        base_path('composer.json'),
+        json_encode([
+            'require' => [
+                'php' => '^8.3',
+                'example/package' => '^0.9',
+            ],
+        ])
+    );
+
+    Http::fake([
+        'api.github.com/repos/laravel/laravel/contents/composer.json*' => Http::response([
+            'content' => base64_encode(json_encode([
+                'require' => [
+                    'php' => '^8.3',
+                ],
+            ])),
+        ]),
+        'packagist.org/packages/example/package.json' => Http::response([
+            'package' => [
+                'versions' => [
+                    '2.0.0' => [
+                        'require' => [
+                            'laravel/framework' => '^13.0',
+                            'illuminate/support' => '^12.0',
+                        ],
+                    ],
+                    '1.5.0' => [
+                        'require' => [
+                            'laravel/framework' => '^13.0',
+                            'illuminate/support' => '^13.0',
+                        ],
+                    ],
+                ],
+            ],
+        ]),
+    ]);
+
+    $results = (new ComposerAnalyzer([], '13.x'))->analyze();
+
+    expect($results)->toContain([
+        'type' => 'composer',
+        'severity' => 'warning',
+        'message' => 'example/package (^0.9) is not compatible with Laravel 13.x. Recommended constraint: ^1.5.',
+        'key' => 'example/package',
+    ]);
+});
+
+it('correctly compares Composer version constraints', function (
+    string $installed,
+    string $recommended,
+    bool $compatible
+) {
+    file_put_contents(
+        base_path('composer.json'),
+        json_encode([
+            'require' => [
+                'php' => '^8.3',
+                'example/package' => $installed,
+            ],
+        ])
+    );
+
+    config(['x-ray.cache.enabled' => false]);
+
+    Http::fake([
+        'api.github.com/repos/laravel/laravel/contents/composer.json*' => Http::response([
+            'content' => base64_encode(json_encode([
+                'require' => [
+                    'php' => '^8.3',
+                    'example/package' => $recommended,
+                ],
+            ])),
+        ]),
+    ]);
+
+    $results = (new ComposerAnalyzer([], '13.x'))->analyze();
+
+    $hasWarning = collect($results)->contains(
+        fn ($result) => $result['key'] === 'example/package'
+            && $result['severity'] === 'warning'
+    );
+
+    expect($hasWarning)->toBe(! $compatible);
+})->with([
+    'installed range is inside recommended range' => [
+        '^6.18',
+        '^6.0',
+        true,
+    ],
+    'installed range is broader than recommended range' => [
+        '^6.0',
+        '^6.18',
+        false,
+    ],
+    'installed range is an older major version' => [
+        '^5.7',
+        '^6.18',
+        false,
+    ],
+    'OR constraint includes an unsupported range' => [
+        '^5.0 || ^6.0',
+        '^6.0',
+        false,
+    ],
+]);
+
+it('throws an exception when GitHub fails to fetch the Laravel skeleton composer file', function () {
+    config(['x-ray.cache.enabled' => false]);
+
+    Http::fake([
+        'api.github.com/repos/laravel/laravel/contents/composer.json*' => Http::response(
+            ['message' => 'Not Found'],
+            404
+        ),
+    ]);
+
+    expect(fn () => (new ComposerAnalyzer([], '13.x'))->analyze())
+        ->toThrow(RuntimeException::class);
+});
+
+it('throws an exception when GitHub returns invalid Laravel skeleton composer content', function () {
+    config(['x-ray.cache.enabled' => false]);
+
+    Http::fake([
+        'api.github.com/repos/laravel/laravel/contents/composer.json*' => Http::response([
+            'content' => base64_encode('{invalid json'),
+        ]),
+    ]);
+
+    expect(fn () => (new ComposerAnalyzer([], '13.x'))->analyze())
+        ->toThrow(RuntimeException::class);
+});
+
+it('handles unsuccessful Packagist responses', function () {
+    config(['x-ray.cache.enabled' => false]);
+
+    file_put_contents(
+        base_path('composer.json'),
+        json_encode([
+            'require' => [
+                'php' => '^8.3',
+                'example/package' => '^1.0',
+            ],
+        ])
+    );
+
+    Http::fake([
+        'api.github.com/repos/laravel/laravel/contents/composer.json*' => Http::response([
+            'content' => base64_encode(json_encode([
+                'require' => [
+                    'php' => '^8.3',
+                    'example/package' => '^2.0',
+                ],
+            ])),
+        ]),
+        'packagist.org/packages/example/package.json' => Http::response([], 500),
+    ]);
+
+    $results = (new ComposerAnalyzer([], '13.x'))->analyze();
+
+    expect(collect($results)->contains(
+        fn ($result) => $result['key'] === 'example/package'
+            && $result['severity'] === 'warning'
+    ))->toBeTrue();
+});
+
+it('handles Packagist responses without version data', function () {
+    config(['x-ray.cache.enabled' => false]);
+
+    file_put_contents(
+        base_path('composer.json'),
+        json_encode([
+            'require' => [
+                'php' => '^8.3',
+                'example/package' => '^1.0',
+            ],
+        ])
+    );
+
+    Http::fake([
+        'api.github.com/repos/laravel/laravel/contents/composer.json*' => Http::response([
+            'content' => base64_encode(json_encode([
+                'require' => [
+                    'php' => '^8.3',
+                    'example/package' => '^2.0',
+                ],
+            ])),
+        ]),
+        'packagist.org/packages/example/package.json' => Http::response([
+            'package' => [],
+        ]),
+    ]);
+
+    $results = (new ComposerAnalyzer([], '13.x'))->analyze();
+
+    expect(collect($results)->contains(
+        fn ($result) => $result['key'] === 'example/package'
+            && $result['severity'] === 'warning'
+    ))->toBeTrue();
+});
+
+it('handles Packagist connection failures', function () {
+    config(['x-ray.cache.enabled' => false]);
+
+    file_put_contents(
+        base_path('composer.json'),
+        json_encode([
+            'require' => [
+                'php' => '^8.3',
+                'example/package' => '^1.0',
+            ],
+        ])
+    );
+
+    Http::fake([
+        'api.github.com/repos/laravel/laravel/contents/composer.json*' => Http::response([
+            'content' => base64_encode(json_encode([
+                'require' => [
+                    'php' => '^8.3',
+                    'example/package' => '^2.0',
+                ],
+            ])),
+        ]),
+        'packagist.org/packages/example/package.json' => fn () => throw new \Illuminate\Http\Client\ConnectionException(
+            'Connection failed.'
+        ),
+    ]);
+
+    $results = (new ComposerAnalyzer([], '13.x'))->analyze();
+
+    expect(collect($results)->contains(
+        fn ($result) => $result['key'] === 'example/package'
+            && $result['severity'] === 'warning'
+    ))->toBeTrue();
 });
