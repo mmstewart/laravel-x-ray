@@ -139,7 +139,6 @@ it('groups issues by type', function () {
         ->and($output)->toContain('    • Configuration changed.');
 });
 
-
 it('renders a JSON report with severity counts and findings', function () {
     $output = '';
 

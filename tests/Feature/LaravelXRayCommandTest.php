@@ -89,7 +89,6 @@ it('uses the installed version when from is omitted', function () {
         ->expectsOutputToContain("Comparing {$installedBranch} → 13.x");
 });
 
-
 it('outputs a JSON report when the json format is requested', function () {
     config([
         'x-ray.minimum_severity' => 'info',

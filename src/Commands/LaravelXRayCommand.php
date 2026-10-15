@@ -74,8 +74,8 @@ class LaravelXRayCommand extends Command
      * Laravel major version is greater than the source. It currently assumes
      * branch names start with the major version (e.g. "11.x", "12.x").
      *
-     * @param string $from Source branch or version
-     * @param string $to Target branch or version
+     * @param  string  $from  Source branch or version
+     * @param  string  $to  Target branch or version
      * @return bool True when upgrade is valid, false otherwise
      */
     private function isValidUpgrade(string $from, string $to): bool
@@ -130,7 +130,7 @@ class LaravelXRayCommand extends Command
     /**
      * Build the analyzers registry for execution.
      *
-     * @param array<string,mixed> $categorized
+     * @param  array<string,mixed>  $categorized
      * @return array<string,callable>
      */
     private function buildAnalyzers(string $to, array $categorized): array
@@ -146,7 +146,7 @@ class LaravelXRayCommand extends Command
     /**
      * Run the configured analyzers honoring config toggles.
      *
-     * @param array<string,callable> $analyzers
+     * @param  array<string,callable>  $analyzers
      * @return array<int,mixed>
      */
     private function runAnalyzers(array $analyzers): array
@@ -163,8 +163,8 @@ class LaravelXRayCommand extends Command
      * The `LaravelXRayReport` is responsible for formatting and output; this
      * method delegates to it so the command remains focused on orchestration.
      *
-     * @param array<int,mixed> $results Analyzer results to render
-     * @param string $format Report format (table or json)
+     * @param  array<int,mixed>  $results  Analyzer results to render
+     * @param  string  $format  Report format (table or json)
      */
     private function renderReport(array $results, string $format = 'table'): void
     {
