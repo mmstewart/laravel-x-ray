@@ -138,3 +138,49 @@ it('groups issues by type', function () {
         ->and($output)->toContain('    • Package requires adjustment.')
         ->and($output)->toContain('    • Configuration changed.');
 });
+
+
+it('renders a JSON report with severity counts and findings', function () {
+    $output = '';
+
+    $command = reportCommand();
+
+    $command->shouldReceive('line')
+        ->once()
+        ->with(Mockery::type('string'))
+        ->andReturnUsing(function (string $line) use (&$output) {
+            $output = $line;
+        });
+
+    $command->shouldNotReceive('info');
+    $command->shouldNotReceive('warn');
+    $command->shouldNotReceive('error');
+
+    $report = new LaravelXRayReport($command);
+
+    $report->display([
+        [
+            'type' => 'composer',
+            'severity' => 'warning',
+            'message' => 'Package requires adjustment.',
+            'key' => 'package',
+        ],
+        [
+            'type' => 'bootstrap',
+            'severity' => 'error',
+            'message' => 'Bootstrap requires changes.',
+            'key' => 'bootstrap/app.php',
+        ],
+    ], 'json');
+
+    $data = json_decode($output, true, flags: JSON_THROW_ON_ERROR);
+
+    expect($data['summary'])->toBe([
+        'errors' => 1,
+        'warnings' => 1,
+        'info' => 0,
+    ])
+        ->and($data['findings'])->toHaveCount(2)
+        ->and($data['findings'][0]['message'])
+        ->toBe('Package requires adjustment.');
+});

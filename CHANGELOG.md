@@ -2,7 +2,16 @@
 
 All notable changes to `laravel-x-ray` will be documented in this file.
 
-## Laravel X-Ray v1.3.0 🎉 - 2026-10-15
+## Laravel X-Ray v1.4.0 - 2026-10-15
+
+Added JSON report output for easier integration with scripts and CI workflows.
+
+### Added
+
+- Added `--format=json` to output upgrade findings as JSON, including severity counts and finding details.
+- Preserved the existing table report as the default output format.
+
+## Laravel X-Ray v1.3.0 - 2026-10-15
 
 ### Improved
 
@@ -16,7 +25,7 @@ All notable changes to `laravel-x-ray` will be documented in this file.
 - Handle Packagist API errors, missing version data, and connection failures gracefully.
 - Exclude prerelease package versions from compatibility recommendations.
 
-## Laravel X-Ray v1.2.0 🎉 - 2026-10-12
+## Laravel X-Ray v1.2.0 - 2026-10-12
 
 ### Improvements
 
@@ -39,7 +48,7 @@ All notable changes to `laravel-x-ray` will be documented in this file.
 - Add tests for downgrade prevention and identical version comparisons.
 - Verify existing analysis and reporting behavior.
 
-## Laravel X-Ray v1.1.0 🎉 - 2026-10-05
+## Laravel X-Ray v1.1.0 - 2026-10-05
 
 ### Improvements
 

@@ -11,7 +11,7 @@ class LaravelXRayReport
         private Command $command,
     ) {}
 
-    public function display(array $results): void
+    public function display(array $results, string $format = 'table'): void
     {
         $severityLevels = [
             'info' => 0,
@@ -22,11 +22,25 @@ class LaravelXRayReport
         $minimum = config('x-ray.minimum_severity', 'info');
 
         $results = collect($results)
-            ->filter(fn ($issue) => isset($severityLevels[$issue['severity']]) && $severityLevels[$issue['severity']] >= $severityLevels[$minimum]);
+            ->filter(fn ($issue) => isset($severityLevels[$issue['severity']]) && $severityLevels[$issue['severity']] >= $severityLevels[$minimum])
+            ->values();
 
         $errors = $results->where('severity', 'error');
         $warnings = $results->where('severity', 'warning');
         $info = $results->where('severity', 'info');
+
+        if ($format === 'json') {
+            $this->command->line(json_encode([
+                'summary' => [
+                    'errors' => $errors->count(),
+                    'warnings' => $warnings->count(),
+                    'info' => $info->count(),
+                ],
+                'findings' => $results->values()->all(),
+            ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR));
+
+            return;
+        }
 
         $this->command->line('');
         $this->command->line(str_repeat('─', 50));

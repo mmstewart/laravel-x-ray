@@ -15,12 +15,20 @@ use Mmstewart\LaravelXRay\Services\LaravelVersionResolver;
 
 class LaravelXRayCommand extends Command
 {
-    public $signature = 'laravel-x-ray {from?} {to?}';
+    public $signature = 'laravel-x-ray {from?} {to?} {--format=table}';
 
     public $description = 'Scan your Laravel app for upgrade compatibility.';
 
     public function handle(): int
     {
+        $format = $this->option('format');
+
+        if (! in_array($format, ['table', 'json'], true)) {
+            $this->error('Invalid format. Supported formats: table, json.');
+
+            return self::FAILURE;
+        }
+
         $versionResolver = new LaravelVersionResolver;
 
         $context = new LaravelContext(
@@ -35,8 +43,10 @@ class LaravelXRayCommand extends Command
             return self::FAILURE;
         }
 
-        $this->info("Laravel {$context->installedVersion}");
-        $this->info("Comparing {$from} → {$to}");
+        if ($format === 'table') {
+            $this->info("Laravel {$context->installedVersion}");
+            $this->info("Comparing {$from} → {$to}");
+        }
 
         if ($from === $to) {
             $this->warn('No newer Laravel skeleton branch is available.');
@@ -52,7 +62,7 @@ class LaravelXRayCommand extends Command
 
         $results = $this->runAnalyzers($analyzers);
 
-        $this->renderReport($results);
+        $this->renderReport($results, $format);
 
         return self::SUCCESS;
     }
@@ -64,8 +74,8 @@ class LaravelXRayCommand extends Command
      * Laravel major version is greater than the source. It currently assumes
      * branch names start with the major version (e.g. "11.x", "12.x").
      *
-     * @param  string  $from  Source branch or version
-     * @param  string  $to  Target branch or version
+     * @param string $from Source branch or version
+     * @param string $to Target branch or version
      * @return bool True when upgrade is valid, false otherwise
      */
     private function isValidUpgrade(string $from, string $to): bool
@@ -110,7 +120,7 @@ class LaravelXRayCommand extends Command
     /**
      * Fetch skeleton diff between branches.
      *
-     * @return array<int, array>
+     * @return array<int,array>
      */
     private function fetchSkeletonDiff(string $from, string $to): array
     {
@@ -120,7 +130,7 @@ class LaravelXRayCommand extends Command
     /**
      * Build the analyzers registry for execution.
      *
-     * @param  array<string,mixed>  $categorized
+     * @param array<string,mixed> $categorized
      * @return array<string,callable>
      */
     private function buildAnalyzers(string $to, array $categorized): array
@@ -136,7 +146,7 @@ class LaravelXRayCommand extends Command
     /**
      * Run the configured analyzers honoring config toggles.
      *
-     * @param  array<string,callable>  $analyzers
+     * @param array<string,callable> $analyzers
      * @return array<int,mixed>
      */
     private function runAnalyzers(array $analyzers): array
@@ -153,10 +163,11 @@ class LaravelXRayCommand extends Command
      * The `LaravelXRayReport` is responsible for formatting and output; this
      * method delegates to it so the command remains focused on orchestration.
      *
-     * @param  array<int,mixed>  $results  Analyzer results to render
+     * @param array<int,mixed> $results Analyzer results to render
+     * @param string $format Report format (table or json)
      */
-    private function renderReport(array $results): void
+    private function renderReport(array $results, string $format = 'table'): void
     {
-        (new LaravelXRayReport($this))->display($results);
+        (new LaravelXRayReport($this))->display($results, $format);
     }
 }

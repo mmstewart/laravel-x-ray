@@ -52,6 +52,50 @@ If you omit the arguments, X-Ray determines the source branch from your installe
 php artisan laravel-x-ray
 ```
 
+### Report formats
+
+By default, X-Ray displays a human-readable table report. You can use the `--format` option to output findings as JSON for scripts and CI workflows.
+
+**JSON output**
+
+```bash
+php artisan laravel-x-ray 11.x 13.x --format=json
+```
+
+The JSON report contains a summary with counts for errors, warnings, and informational findings, along with a findings array containing each finding's type, severity, message, and key.
+
+Example JSON output:
+
+```json
+{
+    "summary": {
+        "errors": 0,
+        "warnings": 1,
+        "info": 0
+    },
+    "findings": [
+        {
+            "type": "composer",
+            "severity": "warning",
+            "message": "Example compatibility warning.",
+            "key": "example/package"
+        }
+    ]
+}
+```
+
+The example above is illustrative. Actual findings and severity counts depend on your application and the Laravel versions being compared.
+
+Supported formats:
+
+- table — Human-readable report (default).
+- json — JSON report for machine-readable output.
+
+```bash
+# Explicitly use the default table format
+php artisan laravel-x-ray 11.x 13.x --format=table
+```
+
 ### Version validation
 
 X-Ray validates the supplied version arguments before performing the comparison.
