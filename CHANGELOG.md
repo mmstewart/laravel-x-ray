@@ -2,7 +2,7 @@
 
 All notable changes to `laravel-x-ray` will be documented in this file.
 
-## Laravel X-Ray v1.3.0 🎉 - 2026-10-14
+## Laravel X-Ray v1.3.0 🎉 - 2026-10-15
 
 ### Improved
 
