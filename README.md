@@ -96,6 +96,46 @@ Supported formats:
 php artisan laravel-x-ray 11.x 13.x --format=table
 ```
 
+### Failure thresholds
+
+Use the `--fail-on` option to make the command return a non-zero exit code when findings meet a specified severity threshold. This is useful for enforcing upgrade checks in CI workflows.
+
+Supported thresholds:
+
+- `error` — Fail if errors are found.
+- `warning` — Fail if warnings or errors are found.
+- `info` — Fail if any findings are found.
+
+Examples:
+
+Fail only when errors are found:
+
+```bash
+php artisan laravel-x-ray 11.x 13.x --fail-on=error
+```
+
+Fail when warnings or errors are found:
+
+```bash
+php artisan laravel-x-ray 11.x 13.x --fail-on=warning
+```
+
+Fail when any findings are found:
+
+```bash
+php artisan laravel-x-ray 11.x 13.x --fail-on=info
+```
+
+You can combine `--fail-on` with `--format=json` for machine-readable output in CI pipelines:
+
+```bash
+php artisan laravel-x-ray 11.x 13.x --format=json --fail-on=warning
+```
+
+By default, findings do not cause the command to fail. When `--fail-on` is specified, only findings that meet the configured `minimum_severity` setting are considered.
+
+The command returns exit code `0` when the threshold is not met and exit code `1` when it is met. Invalid threshold values also return a non-zero exit code.
+
 ### Version validation
 
 X-Ray validates the supplied version arguments before performing the comparison.

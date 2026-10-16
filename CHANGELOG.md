@@ -2,6 +2,21 @@
 
 All notable changes to `laravel-x-ray` will be documented in this file.
 
+## Laravel X-Ray v1.5.0 - 2026-10-15
+
+### Added
+
+- Added the `--fail-on` option to return a non-zero exit code when findings meet a specified severity threshold (`error`, `warning`, or `info`).
+- Added failure threshold support for both table and JSON report formats.
+- Respected the configured `minimum_severity` setting when determining whether findings trigger a failure.
+
+### Usage
+
+```bash
+php artisan laravel-x-ray 11.x 13.x --fail-on=warning
+php artisan laravel-x-ray 11.x 13.x --format=json --fail-on=error
+```
+
 ## Laravel X-Ray v1.4.0 - 2026-10-15
 
 Added JSON report output for easier integration with scripts and CI workflows.
