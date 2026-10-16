@@ -228,7 +228,6 @@ it('rejects an unsupported failure threshold', function () {
         );
 });
 
-
 it('fails when the info threshold is met', function () {
     config([
         'x-ray.minimum_severity' => 'info',
