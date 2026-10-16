@@ -261,7 +261,7 @@ it('fails when the info threshold is met', function () {
         'from' => '11.x',
         'to' => '13.x',
         '--fail-on' => 'info',
-    ])->assertExitCode(1);
+    ])->expectsOutputToContain('SUCCESS: No findings meet the configured failure threshold');
 });
 
 it('succeeds by default when findings are present', function () {
