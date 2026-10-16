@@ -247,10 +247,10 @@ it('succeeds by default when findings are present', function () {
     ]);
 
     Http::fake([
-        'api.github.com/repos/laravel/laravel' => Http::response([
+        '*api.github.com/repos/laravel/laravel' => Http::response([
             'default_branch' => '13.x',
         ]),
-        'api.github.com/repos/laravel/laravel/compare/*' => Http::response([
+        '*api.github.com/repos/laravel/laravel/compare/*' => Http::response([
             'files' => [
                 [
                     'filename' => 'config/legacy.php',
@@ -258,7 +258,7 @@ it('succeeds by default when findings are present', function () {
                 ],
             ],
         ]),
-        'api.github.com/repos/laravel/laravel/contents/composer.json*' => Http::response([
+        '*api.github.com/repos/laravel/laravel/contents/composer.json*' => Http::response([
             'content' => base64_encode(json_encode([
                 'require' => [
                     'php' => '^8.3',
