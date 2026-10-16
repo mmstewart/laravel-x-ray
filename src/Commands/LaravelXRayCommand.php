@@ -78,9 +78,9 @@ class LaravelXRayCommand extends Command
     /**
      * Report whether findings meet the configured failure threshold.
      *
-     * @param array<int,mixed> $results Analyzer findings
-     * @param string $failOn Minimum severity that triggers failure
-     * @param string $format Report output format
+     * @param  array<int,mixed>  $results  Analyzer findings
+     * @param  string  $failOn  Minimum severity that triggers failure
+     * @param  string  $format  Report output format
      * @return int Command exit code
      */
     private function reportFailureThreshold(array $results, string $failOn, string $format): int
@@ -113,7 +113,7 @@ class LaravelXRayCommand extends Command
             }
         }
 
-        $this->error('FAILURE: The report contains ' . implode(', ', $counts) . " at or above the configured failure threshold (--fail-on={$failOn}).");
+        $this->error('FAILURE: The report contains '.implode(', ', $counts)." at or above the configured failure threshold (--fail-on={$failOn}).");
 
         return self::FAILURE;
     }
@@ -124,8 +124,8 @@ class LaravelXRayCommand extends Command
      * Only findings that meet both the requested failure threshold and the
      * configured minimum severity are included in the counts.
      *
-     * @param array<int,mixed> $results Analyzer findings
-     * @param string $failOn Minimum severity that triggers failure
+     * @param  array<int,mixed>  $results  Analyzer findings
+     * @param  string  $failOn  Minimum severity that triggers failure
      * @return array<string,int> Counts grouped by severity
      */
     private function getFailureCounts(array $results, string $failOn): array
@@ -164,8 +164,8 @@ class LaravelXRayCommand extends Command
      * Laravel major version is greater than the source. It currently assumes
      * branch names start with the major version (e.g. "11.x", "12.x").
      *
-     * @param string $from Source branch or version
-     * @param string $to Target branch or version
+     * @param  string  $from  Source branch or version
+     * @param  string  $to  Target branch or version
      * @return bool True when upgrade is valid, false otherwise
      */
     private function isValidUpgrade(string $from, string $to): bool
@@ -220,7 +220,7 @@ class LaravelXRayCommand extends Command
     /**
      * Build the analyzers registry for execution.
      *
-     * @param array<string,mixed> $categorized
+     * @param  array<string,mixed>  $categorized
      * @return array<string,callable>
      */
     private function buildAnalyzers(string $to, array $categorized): array
@@ -236,7 +236,7 @@ class LaravelXRayCommand extends Command
     /**
      * Run the configured analyzers honoring config toggles.
      *
-     * @param array<string,callable> $analyzers
+     * @param  array<string,callable>  $analyzers
      * @return array<int,mixed>
      */
     private function runAnalyzers(array $analyzers): array
@@ -253,8 +253,8 @@ class LaravelXRayCommand extends Command
      * The `LaravelXRayReport` is responsible for formatting and output; this
      * method delegates to it so the command remains focused on orchestration.
      *
-     * @param array<int,mixed> $results Analyzer results to render
-     * @param string $format Report format (table or json)
+     * @param  array<int,mixed>  $results  Analyzer results to render
+     * @param  string  $format  Report format (table or json)
      */
     private function renderReport(array $results, string $format = 'table'): void
     {
