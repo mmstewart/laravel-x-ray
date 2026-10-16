@@ -228,9 +228,34 @@ it('rejects an unsupported failure threshold', function () {
         );
 });
 
+
 it('fails when the info threshold is met', function () {
     config([
         'x-ray.minimum_severity' => 'info',
+        'x-ray.cache.enabled' => false,
+    ]);
+
+    Http::fake([
+        'api.github.com/repos/laravel/laravel' => Http::response([
+            'default_branch' => '13.x',
+        ]),
+        'api.github.com/repos/laravel/laravel/compare/*' => Http::response([
+            'files' => [
+                [
+                    'filename' => 'config/legacy.php',
+                    'status' => 'removed',
+                ],
+            ],
+        ]),
+        'api.github.com/repos/laravel/laravel/contents/composer.json*' => Http::response([
+            'content' => base64_encode(json_encode([
+                'require' => [
+                    'php' => '^8.3',
+                    'laravel/framework' => '^13.0',
+                ],
+                'require-dev' => [],
+            ])),
+        ]),
     ]);
 
     $this->artisan('laravel-x-ray', [
