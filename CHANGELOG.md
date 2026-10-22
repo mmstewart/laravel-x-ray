@@ -2,6 +2,20 @@
 
 All notable changes to `laravel-x-ray` will be documented in this file.
 
+## Laravel X-Ray v1.5.1 - 2026-10-22
+
+### Security
+
+Laravel X-Ray now requires **PHP 8.4.27+ or 8.5.12+**.
+
+These are the PHP releases that fix two critical remote code execution vulnerabilities in PHP core, [CVE-2026-109618](https://www.cve.org/CVERecord?id=CVE-2026-109618) and [CVE-2026-109619](https://www.cve.org/CVERecord?id=CVE-2026-109619) (CVSS 9.2). Raising the minimum version prevents the package from being installed on an unpatched PHP runtime.
+
+### Upgrading
+
+```bash
+composer update mmstewart/laravel-x-ray
+
+```
 ## Laravel X-Ray v1.5.0 - 2026-10-15
 
 ### Added
@@ -15,8 +29,8 @@ All notable changes to `laravel-x-ray` will be documented in this file.
 ```bash
 php artisan laravel-x-ray 11.x 13.x --fail-on=warning
 php artisan laravel-x-ray 11.x 13.x --format=json --fail-on=error
-```
 
+```
 ## Laravel X-Ray v1.4.0 - 2026-10-15
 
 Added JSON report output for easier integration with scripts and CI workflows.
@@ -136,4 +150,5 @@ Laravel X-Ray is a Laravel upgrade compatibility scanner that analyzes your appl
 
 ```bash
 composer require mmstewart/laravel-x-ray
+
 ```
